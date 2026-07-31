@@ -1,0 +1,137 @@
+import { useEffect, useState } from "react";
+import { toast } from "../utils/notifications.js";
+import { ArrowLeft, LayoutDashboard, ShieldCheck } from "lucide-react";
+import { api } from "../api/client.js";
+import { displayUserName } from "../data/sessionStore.js";
+import NotificationCenter from "../components/NotificationCenter.jsx";
+import AdminAccessGate from "./AdminAccessGate.jsx";
+import AdminDashboard from "./AdminDashboard.jsx";
+import { PUBLIC_SITE_URL } from "../config/urls.js";
+
+function OwnerPanel() {
+  const [session, setSession] = useState(null);
+  const [services, setServices] = useState([]);
+  const [booting, setBooting] = useState(true);
+
+  useEffect(() => {
+    const bootstrap = async () => {
+      const saved = api.getSavedUser();
+      if (!saved || !api.isAdmin()) {
+        setBooting(false);
+        return;
+      }
+
+      try {
+        if (!api.hasToken()) {
+          api.clearSession();
+          setBooting(false);
+          return;
+        }
+
+        const response = await api.getProfile();
+        const profile = response.user;
+        if (!["admin", "owner"].includes(profile?.role)) {
+          api.clearSession();
+          setBooting(false);
+          return;
+        }
+
+        api.saveSession({ user: profile, token: api.getToken() });
+        setSession({ user: profile, token: api.getToken() });
+
+        const backendServices = await api.getAdminServices();
+        setServices(backendServices || []);
+      } catch (error) {
+        if (error.status === 401 || error.status === 403) {
+          api.clearSession();
+          setSession(null);
+          toast.error("Session expired. Please log in again.");
+        } else {
+          toast.error("Could not load latest admin details. Please check your connection.");
+        }
+      } finally {
+        setBooting(false);
+      }
+    };
+
+    bootstrap();
+  }, []);
+
+  const handleAuthSuccess = async (nextSession) => {
+    api.saveSession(nextSession);
+    setSession(nextSession);
+    try {
+      const backendServices = await api.getAdminServices();
+      setServices(backendServices || []);
+    } catch {
+      toast.error("Could not load SQL services from backend.");
+    }
+  };
+
+  const handleLogout = () => {
+    api.clearSession();
+    setSession(null);
+  };
+
+  if (booting) {
+    return (
+      <main className="owner-shell">
+        <div className="owner-loading">Checking owner access...</div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="owner-shell">
+      <header className="owner-topbar shell">
+        <div className="owner-brand">
+          <span><LayoutDashboard size={17} /></span>
+          <div>
+            <strong>fixOindia Control</strong>
+            <small>Operations dashboard</small>
+          </div>
+        </div>
+        <div className="owner-topbar-actions">
+          <NotificationCenter />
+          <a className="owner-back" href={PUBLIC_SITE_URL}>
+            <ArrowLeft size={16} /> Public site
+          </a>
+          {session?.user ? (
+            <div className="owner-session">
+              <span className="owner-role"><ShieldCheck size={14} /> {session.user.role === "owner" ? "Owner" : "Operations"}</span>
+              <strong>{displayUserName(session.user)}</strong>
+              <button type="button" className="btn btn-ghost btn-small" onClick={handleLogout}>
+                Logout
+              </button>
+            </div>
+          ) : (
+            <span className="owner-locked">Operations access only</span>
+          )}
+        </div>
+      </header>
+
+      {!session?.user || !api.isAdmin() ? (
+        <AdminAccessGate onAuthSuccess={handleAuthSuccess} />
+      ) : (
+        <AdminDashboard
+          currentUser={session.user}
+          services={services}
+          onServiceAdded={(service) => setServices((current) => [...current, service])}
+          onServiceUpdated={(service) =>
+            setServices((current) =>
+              current.map((item) => ((item._id || item.id) === (service._id || service.id) ? service : item))
+            )
+          }
+          onServiceDeleted={(service) =>
+            setServices((current) =>
+              current.filter((item) => (item._id || item.id) !== (service._id || service.id))
+            )
+          }
+          onServicesSynced={setServices}
+        />
+      )}
+    </main>
+  );
+}
+
+export default OwnerPanel;

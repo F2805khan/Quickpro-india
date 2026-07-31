@@ -29,6 +29,12 @@ const ensureAdminUser = async () => {
     });
 
     if (!admin) {
+      admin =
+        (await User.findOne({ where: { role: "owner" } })) ||
+        (await User.findOne({ where: { role: "admin" } }));
+    }
+
+    if (!admin) {
       admin = await User.create({
         name: normalize(process.env.ADMIN_NAME) || "fixOindia Control",
         userId: adminUserId,
@@ -48,9 +54,7 @@ const ensureAdminUser = async () => {
       if (adminUserId && admin.userId !== adminUserId) admin.userId = adminUserId;
       if (adminEmail && admin.email !== adminEmail) admin.email = adminEmail;
       if (adminPhone && admin.phone !== adminPhone) admin.phone = adminPhone;
-      if (!admin.password || process.env.ADMIN_PASSWORD_RESET_ON_START === "true") {
-        admin.password = adminPassword;
-      }
+      admin.password = adminPassword;
       await admin.save();
     }
 

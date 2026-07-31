@@ -1,4 +1,4 @@
-const normalizePhone = (phone) => {
+export const normalizePhone = (phone) => {
   const digits = String(phone || "").replace(/\D/g, "");
 
   if (!digits) return "";
@@ -85,6 +85,80 @@ const sendWebhookMessage = async (payload) => {
 
   return response.json().catch(() => ({ sent: true, provider: "webhook" }));
 };
+
+export const isWhatsAppCloudConfigured = () =>
+  Boolean(
+    process.env.WHATSAPP_CLOUD_PHONE_NUMBER_ID?.trim() &&
+    process.env.WHATSAPP_CLOUD_ACCESS_TOKEN?.trim()
+  );
+
+/**
+ * Generic outbound text message. Tries the Cloud API first, then the
+ * webhook fallback, otherwise returns a manual wa.me link.
+ */
+export async function sendWhatsAppText(phone, message) {
+  const to = normalizePhone(phone);
+
+  if (!to || !message) {
+    return { sent: false, skipped: true, reason: "Phone and message are required" };
+  }
+
+  const cloudResult = await sendCloudMessage({ to, message });
+  if (cloudResult) return cloudResult;
+
+  const webhookResult = await sendWebhookMessage({ phone: to, message });
+  if (webhookResult) return webhookResult;
+
+  return {
+    sent: false,
+    skipped: true,
+    provider: "manual-link",
+    whatsappUrl: `https://wa.me/${to}?text=${encodeURIComponent(message)}`,
+    reason:
+      "Set WHATSAPP_CLOUD_PHONE_NUMBER_ID + WHATSAPP_CLOUD_ACCESS_TOKEN, or WHATSAPP_AGENT_WEBHOOK_URL, to send automatically"
+  };
+}
+
+const STATUS_LINES = {
+  Confirmed: "Your booking is confirmed. We'll assign a professional shortly.",
+  "Professional Assigned": "A professional has been assigned to your booking.",
+  "On The Way": "Your professional is on the way!",
+  "Service In Progress": "Your service is now in progress.",
+  Completed: "Your service is complete. Thank you for choosing fixOindia!",
+  Cancelled: "Your booking has been cancelled."
+};
+
+const statusMessage = (booking) =>
+  [
+    `fixOindia update for booking ${booking.bookingId}`,
+    ``,
+    STATUS_LINES[booking.bookingStatus] || `Status: ${booking.bookingStatus}`,
+    ``,
+    `Service: ${booking.serviceName}`,
+    booking.professionalName ? `Professional: ${booking.professionalName}` : null,
+    booking.estimatedArrival && ["Professional Assigned", "On The Way"].includes(booking.bookingStatus)
+      ? `ETA: ${booking.estimatedArrival}`
+      : null,
+    `Slot: ${booking.date} at ${booking.time}`
+  ].filter((line) => line !== null).join("\n");
+
+/** Notify the customer about a booking status change */
+export async function notifyBookingStatusUpdate(booking) {
+  return sendWhatsAppText(booking.phone, statusMessage(booking));
+}
+
+/** Notify the customer that their booking was cancelled */
+export async function notifyBookingCancelled(booking) {
+  const message = [
+    `fixOindia update for booking ${booking.bookingId}`,
+    ``,
+    `Your booking for "${booking.serviceName}" on ${booking.date} at ${booking.time} has been cancelled.`,
+    ``,
+    `If this was a mistake or you'd like to rebook, just reply to this message or visit the app.`
+  ].join("\n");
+
+  return sendWhatsAppText(booking.phone, message);
+}
 
 export async function notifyWhatsAppAgent(booking) {
   const payload = buildPayload(booking);

@@ -7,6 +7,7 @@ import {
 } from "../controllers/beautyController.js";
 import {
   getAllBookings,
+  getAuthMethods,
   getOverview,
   getPayments,
   getPaymentMethods,
@@ -14,6 +15,7 @@ import {
   getUsers,
   resetUserPassword,
   replyToSupportMessage,
+  updateAuthMethods,
   updatePaymentMethods,
   exportAcceptedBookingsExcel
 } from "../controllers/adminController.js";
@@ -25,11 +27,11 @@ import {
   getServices,
   updateService
 } from "../controllers/serviceController.js";
-import { owner, protect } from "../middleware/authMiddleware.js";
+import { admin, protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.use(protect, owner);
+router.use(protect, admin);
 
 router.get("/overview", getOverview);
 router.get("/beauty-artists", getBeautyArtists);
@@ -50,6 +52,8 @@ router.put("/users/:id/password", resetUserPassword);
 router.get("/payments", getPayments);
 router.get("/payment-methods", getPaymentMethods);
 router.put("/payment-methods", updatePaymentMethods);
+router.get("/auth-methods", getAuthMethods);
+router.put("/auth-methods", updateAuthMethods);
 router.get("/coupons", getCoupons);
 router.post("/coupons", createCoupon);
 router.put("/coupons/:id", updateCoupon);

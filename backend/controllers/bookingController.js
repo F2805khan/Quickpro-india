@@ -4,7 +4,7 @@ import Booking, { bookingStatuses } from "../models/Booking.js";
 import Payment from "../models/Payment.js";
 import Service from "../models/Service.js";
 import generateBookingId from "../utils/generateBookingId.js";
-import { notifyWhatsAppAgent } from "../utils/whatsappAgent.js";
+import { notifyBookingCancelled, notifyBookingStatusUpdate, notifyWhatsAppAgent } from "../utils/whatsappAgent.js";
 import { assertPaymentMethodEnabled } from "../utils/paymentMethods.js";
 import { updateAcceptedBookingsCSV } from "../utils/excelExporter.js";
 import { incrementCouponUsage, normalizeCouponCode, validateCouponForAmount } from "../utils/coupons.js";
@@ -181,6 +181,9 @@ export const updateBookingStatus = asyncHandler(async (req, res) => {
   booking.bookingStatus = nextStatus;
   await booking.save();
   await updateAcceptedBookingsCSV().catch(err => console.error("CSV update failed", err));
+  notifyBookingStatusUpdate(booking).catch((err) =>
+    console.error("WhatsApp status notification failed:", err.message)
+  );
 
   res.json(booking);
 });
@@ -198,6 +201,9 @@ export const cancelBooking = asyncHandler(async (req, res) => {
   booking.bookingStatus = "Cancelled";
   await booking.save();
   await updateAcceptedBookingsCSV().catch(err => console.error("CSV update failed", err));
+  notifyBookingCancelled(booking).catch((err) =>
+    console.error("WhatsApp cancellation notification failed:", err.message)
+  );
   res.json({ message: "Booking cancelled successfully", booking });
 });
 

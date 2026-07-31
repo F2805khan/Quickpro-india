@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: fixoindia
+    env: node
+    plan: free
+    buildCommand: npm install --prefix frontend && npm install --prefix backend && npm run build:admin --prefix frontend
+    startCommand: node backend/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_PUBLIC_SITE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 30d
+      - key: ALLOW_DEMO_GOOGLE_AUTH
+        value: "true"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false

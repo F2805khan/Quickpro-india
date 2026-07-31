@@ -7,6 +7,7 @@ import buildIdentityWhere from "../utils/buildIdentityWhere.js";
 import { sendLoginEmail, sendOtpEmail, sendSignupEmail } from "../utils/email.js";
 import { verifyFirebaseIdToken } from "../utils/firebaseAdmin.js";
 import recordAuthEvent from "../utils/recordAuthEvent.js";
+import { assertAuthMethodEnabled, getAuthMethodSettings } from "../utils/authMethods.js";
 
 const otpStore = globalThis.quickfixOtpStore || new Map();
 globalThis.quickfixOtpStore = otpStore;
@@ -19,6 +20,96 @@ const createToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || "30d"
   });
+
+const normalize = (value) => (value?.trim() ? value.trim() : undefined);
+const normalizeLower = (value) => normalize(value)?.toLowerCase();
+
+const getConfiguredAdminIdentity = () => ({
+  userId: normalizeLower(process.env.ADMIN_USER_ID),
+  email: normalizeLower(process.env.ADMIN_EMAIL),
+  phone: normalize(process.env.ADMIN_PHONE)
+});
+
+const getConfiguredAdminConditions = () => {
+  const configured = getConfiguredAdminIdentity();
+  return [
+    configured.userId ? { userId: configured.userId } : null,
+    configured.email ? { email: configured.email } : null,
+    configured.phone ? { phone: configured.phone } : null
+  ].filter(Boolean);
+};
+
+const loginMatchesConfiguredAdminIdentity = (loginIdentifier) => {
+  const identifier = normalize(loginIdentifier);
+  if (!identifier) return false;
+
+  const identifierLower = identifier.toLowerCase();
+  const configured = getConfiguredAdminIdentity();
+  return Boolean(
+    (configured.userId && identifierLower === configured.userId) ||
+      (configured.email && identifierLower === configured.email) ||
+      (configured.phone && identifier === configured.phone)
+  );
+};
+
+const isConfiguredAdminUser = (user) => {
+  if (!user) return false;
+  const configured = getConfiguredAdminIdentity();
+  return Boolean(
+    (configured.userId && user.userId?.toLowerCase() === configured.userId) ||
+      (configured.email && user.email?.toLowerCase() === configured.email) ||
+      (configured.phone && user.phone === configured.phone)
+  );
+};
+
+const matchesConfiguredAdminPassword = (password) =>
+  Boolean(process.env.ADMIN_PASSWORD && password === process.env.ADMIN_PASSWORD);
+
+const syncConfiguredAdminCredentials = async (user) => {
+  const configured = getConfiguredAdminIdentity();
+  user.role = "owner";
+  user.authProvider = "password";
+  if (configured.userId && user.userId !== configured.userId) user.userId = configured.userId;
+  if (configured.email && user.email !== configured.email) user.email = configured.email;
+  if (configured.phone && user.phone !== configured.phone) user.phone = configured.phone;
+  if (process.env.ADMIN_NAME?.trim() && !user.name) user.name = process.env.ADMIN_NAME.trim();
+  user.password = process.env.ADMIN_PASSWORD;
+  await user.save();
+};
+
+const findAdminUserForSync = async () => {
+  const identity = getConfiguredAdminConditions();
+  const configuredAdmin = identity.length ? await User.findOne({ where: { [Op.or]: identity } }) : null;
+  if (configuredAdmin) return configuredAdmin;
+
+  return (
+    (await User.findOne({ where: { role: "owner" } })) ||
+    (await User.findOne({ where: { role: "admin" } }))
+  );
+};
+
+const createConfiguredAdminUser = async () => {
+  const configured = getConfiguredAdminIdentity();
+  return User.create({
+    name: normalize(process.env.ADMIN_NAME) || "fixOindia Control",
+    userId: configured.userId,
+    email: configured.email,
+    phone: configured.phone,
+    password: process.env.ADMIN_PASSWORD,
+    role: "owner",
+    authProvider: "password"
+  });
+};
+
+const ensureConfiguredAdminUser = async () => {
+  const admin = await findAdminUserForSync();
+  if (admin) {
+    await syncConfiguredAdminCredentials(admin);
+    return admin;
+  }
+
+  return createConfiguredAdminUser();
+};
 
 const normalizeOtpKey = (value) => {
   const key = value?.trim();
@@ -56,7 +147,11 @@ const publicUser = (user) => ({
   updatedAt: user.updatedAt
 });
 
+const isPrivilegedRole = (role) => ["admin", "owner"].includes(role);
+
 export const registerUser = asyncHandler(async (req, res) => {
+  await assertAuthMethodEnabled("password", "signup");
+
   const { name, email, phone, userId, password, address, city, latitude, longitude } = req.body;
   const normalizedUserId = userId?.trim() ? userId.trim().toLowerCase() : undefined;
 
@@ -113,16 +208,34 @@ export const loginUser = asyncHandler(async (req, res) => {
   }
 
   const where = buildIdentityWhere({ email, phone, userId, identifier });
-  const user = where ? await User.findOne({ where }) : null;
+  let user = where ? await User.findOne({ where }) : null;
+
+  if (
+    !user &&
+    matchesConfiguredAdminPassword(password) &&
+    loginMatchesConfiguredAdminIdentity(loginIdentifier)
+  ) {
+    user = await ensureConfiguredAdminUser();
+  }
 
   if (!user) {
     res.status(404);
     throw new Error("User not registered");
   }
 
-  if (!(await user.matchPassword(password))) {
+  const passwordMatches = await user.matchPassword(password);
+  const shouldSyncConfiguredAdmin =
+    !passwordMatches && isConfiguredAdminUser(user) && matchesConfiguredAdminPassword(password);
+
+  if (shouldSyncConfiguredAdmin) {
+    await syncConfiguredAdminCredentials(user);
+  } else if (!passwordMatches) {
     res.status(401);
     throw new Error("Invalid login credentials");
+  }
+
+  if (!isPrivilegedRole(user.role)) {
+    await assertAuthMethodEnabled("password", "login");
   }
 
   await recordAuthEvent({ req, user, eventType: "login", provider: "password" });
@@ -138,7 +251,14 @@ export const loginUser = asyncHandler(async (req, res) => {
 });
 
 export const getProfile = asyncHandler(async (req, res) => {
-  res.json({ user: publicUser(req.user) });
+  const user = await User.findByPk(req.user._id);
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  res.json({ user: publicUser(user) });
 });
 
 export const updateProfile = asyncHandler(async (req, res) => {
@@ -150,6 +270,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
   }
 
   const { name, phone, address, email, city, latitude, longitude, subscriptionStatus } = req.body;
+  const updates = {};
 
   if (email !== undefined && email?.trim()) {
     const nextEmail = email.trim().toLowerCase();
@@ -161,16 +282,17 @@ export const updateProfile = asyncHandler(async (req, res) => {
         res.status(409);
         throw new Error("Email already in use");
       }
-      user.email = nextEmail;
+      updates.email = nextEmail;
     }
   }
 
   if (name !== undefined) {
-    user.name = String(name).trim();
-    if (!user.name) {
+    const nextName = String(name).trim();
+    if (!nextName) {
       res.status(400);
       throw new Error("Name cannot be empty");
     }
+    updates.name = nextName;
   }
 
   if (phone !== undefined && phone?.trim()) {
@@ -183,16 +305,16 @@ export const updateProfile = asyncHandler(async (req, res) => {
         res.status(409);
         throw new Error("Phone already in use");
       }
-      user.phone = nextPhone;
     }
+    updates.phone = nextPhone;
   }
 
   if (address !== undefined) {
-    user.address = address ? String(address).trim() : "";
+    updates.address = address ? String(address).trim() : "";
   }
 
   if (city !== undefined) {
-    user.city = city ? String(city).trim() : "";
+    updates.city = city ? String(city).trim() : "";
   }
 
   for (const [field, value, min, max] of [
@@ -201,7 +323,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
   ]) {
     if (value === undefined) continue;
     if (value === null || String(value).trim() === "") {
-      user[field] = null;
+      updates[field] = null;
       continue;
     }
 
@@ -210,7 +332,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
       res.status(400);
       throw new Error(`Invalid ${field}`);
     }
-    user[field] = parsed;
+    updates[field] = parsed;
   }
 
   if (subscriptionStatus !== undefined) {
@@ -218,10 +340,11 @@ export const updateProfile = asyncHandler(async (req, res) => {
       res.status(400);
       throw new Error("Invalid subscription status");
     }
-    user.subscriptionStatus = subscriptionStatus;
+    updates.subscriptionStatus = subscriptionStatus;
   }
 
-  await user.save();
+  await User.persistProfileUpdates(user, updates);
+
   res.json({ user: publicUser(user) });
 });
 
@@ -273,6 +396,10 @@ export const requestOtp = asyncHandler(async (req, res) => {
   if (!otpRecipient || !key) {
     res.status(400);
     throw new Error("An email address is required to send OTP");
+  }
+
+  if (purpose === "signup" || purpose === "login") {
+    await assertAuthMethodEnabled("otp", purpose);
   }
 
   if (purpose === "signup" && user) {
@@ -400,6 +527,8 @@ export const verifyOtp = asyncHandler(async (req, res) => {
     throw new Error("Email and OTP are required");
   }
 
+  await assertAuthMethodEnabled("otp", purpose);
+
   if (purpose === "signup" && existingUser) {
     res.status(409);
     throw new Error("An account already exists. Please log in instead.");
@@ -518,6 +647,8 @@ export const googleLogin = asyncHandler(async (req, res) => {
     throw new Error("Account not found. Choose Signup and continue with Gmail first.");
   }
 
+  await assertAuthMethodEnabled("google", isSignup ? "signup" : "login");
+
   if (!user) {
     user = await User.create({
       name: decodedToken.name || email.split("@")[0] || "fixOindia Customer",
@@ -558,4 +689,9 @@ export const googleLogin = asyncHandler(async (req, res) => {
     user: publicUser(user),
     token: createToken(user._id)
   });
+});
+
+export const getAuthMethods = asyncHandler(async (req, res) => {
+  const methods = await getAuthMethodSettings();
+  res.json(methods);
 });

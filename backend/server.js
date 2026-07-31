@@ -1,9 +1,15 @@
+import dns from "node:dns";
+dns.setDefaultResultOrder("ipv4first");
 import "./config/env.js";
 import cors from "cors";
 import express from "express";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import databaseRoutes from "./routes/databaseRoutes.js";
+import whatsappRoutes from "./routes/whatsappRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
@@ -15,6 +21,9 @@ import locationRoutes from "./routes/locationRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
 import ensureAdminUser from "./utils/ensureAdminUser.js";
 import { isEmailDeliveryConfigured } from "./utils/email.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const adminDistPath = path.resolve(__dirname, "../admin/dist");
 
 const app = express();
 const allowedOrigins = process.env.CLIENT_URL
@@ -29,7 +38,7 @@ app.use(
 );
 app.use(express.json({ limit: "1mb" }));
 
-app.get("/", (req, res) => {
+app.get("/api", (req, res) => {
   res.json({
     name: "fixOindia API",
     tagline: "All Services. One Click.",
@@ -52,10 +61,24 @@ app.use("/api/coupons", couponRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/support", supportRoutes);
+app.use("/api/admin/database", databaseRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/whatsapp", whatsappRoutes);
 app.use("/api/images", imageRoutes);
 app.use("/api/location", locationRoutes);
 app.use("/api/events", eventRoutes);
+
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(adminDistPath));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api")) {
+      return next();
+    }
+    return res.sendFile(path.join(adminDistPath, "index.html"), (error) => {
+      if (error) next(error);
+    });
+  });
+}
 
 app.use(notFound);
 app.use(errorHandler);
