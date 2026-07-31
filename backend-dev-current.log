@@ -1,0 +1,16 @@
+
+> funservice-fullstack@1.0.0 dev:backend
+> npm run dev --prefix backend
+
+
+> funservice-backend@1.0.0 dev
+> nodemon server.js
+
+[33m[nodemon] 3.1.14[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node server.js`[39m
+MySQL connected: quickfix@127.0.0.1
+Owner ready: admin@7074
+FunService API running on port 5000
