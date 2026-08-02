@@ -762,15 +762,6 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
     });
   };
 
-  const autoGenerateCouponCode = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 8; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setCouponForm(prev => ({ ...prev, code }));
-  };
-
   const deleteCoupon = async (coupon) => {
     const couponId = getCouponId(coupon);
     if (!couponId) return;
@@ -2378,17 +2369,7 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
         <form className="admin-form coupon-settings-form" onSubmit={submitCoupon}>
           <div className="admin-form-grid">
             <label>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                Coupon Code
-                <button 
-                  type="button" 
-                  className="btn btn-ghost btn-small" 
-                  onClick={autoGenerateCouponCode}
-                  style={{ fontSize: "11px", padding: "2px 6px" }}
-                >
-                  <RefreshCw size={12} style={{ marginRight: "4px" }} /> Auto
-                </button>
-              </div>
+              Coupon Code
               <input
                 name="code"
                 value={couponForm.code}
