@@ -126,6 +126,11 @@ export const createBooking = asyncHandler(async (req, res) => {
     whatsappAgent = { sent: false, error: error.message };
   }
 
+  const io = req.app.get("io");
+  if (io) {
+    io.emit("new_booking", booking);
+  }
+
   res.status(201).json({ booking, whatsappAgent });
 });
 
@@ -185,6 +190,11 @@ export const updateBookingStatus = asyncHandler(async (req, res) => {
     console.error("WhatsApp status notification failed:", err.message)
   );
 
+  const io = req.app.get("io");
+  if (io) {
+    io.emit("booking_updated", booking);
+  }
+
   res.json(booking);
 });
 
@@ -204,6 +214,12 @@ export const cancelBooking = asyncHandler(async (req, res) => {
   notifyBookingCancelled(booking).catch((err) =>
     console.error("WhatsApp cancellation notification failed:", err.message)
   );
+
+  const io = req.app.get("io");
+  if (io) {
+    io.emit("booking_updated", booking);
+  }
+
   res.json({ message: "Booking cancelled successfully", booking });
 });
 
@@ -243,6 +259,11 @@ export const assignProfessional = asyncHandler(async (req, res) => {
     whatsappAgent = await notifyWhatsAppAgent(booking);
   } catch (error) {
     whatsappAgent = { sent: false, error: error.message };
+  }
+
+  const io = req.app.get("io");
+  if (io) {
+    io.emit("booking_updated", booking);
   }
 
   res.json({ booking, whatsappAgent });

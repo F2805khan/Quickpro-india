@@ -46,6 +46,7 @@ import {
   Video
 } from "lucide-react";
 import { api } from "../api/client.js";
+import socket from "../api/socket.js";
 import { categories } from "../data/services.js";
 import DatabaseManager from "../components/DatabaseManager.jsx";
 import WhatsAppManager from "../components/WhatsAppManager.jsx";
@@ -252,6 +253,7 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
   const [expandedBookingId, setExpandedBookingId] = useState(null);
   const [globalSearch, setGlobalSearch] = useState("");
   const [bookingStatusFilter, setBookingStatusFilter] = useState("All");
+  const [showActiveUsersOnly, setShowActiveUsersOnly] = useState(false);
   
   // Status and Assign Form state inside expandables
   const [assignForm, setAssignForm] = useState({ professionalName: "", professionalPhone: "99988877766", estimatedArrival: "", professionalPhoto: "" });
@@ -448,6 +450,27 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
 
   useEffect(() => {
     refreshDashboard({ quiet: true });
+
+    const handleNewBooking = (booking) => {
+      setBookingsList((prev) => [booking, ...prev]);
+      toast.success("New booking received!");
+      const audio = new Audio("/notification.wav");
+      audio.play().catch((err) => console.log("Audio play prevented:", err));
+    };
+
+    const handleBookingUpdated = (updatedBooking) => {
+      setBookingsList((prev) =>
+        prev.map((b) => (b.bookingId === updatedBooking.bookingId ? updatedBooking : b))
+      );
+    };
+
+    socket.on("new_booking", handleNewBooking);
+    socket.on("booking_updated", handleBookingUpdated);
+
+    return () => {
+      socket.off("new_booking", handleNewBooking);
+      socket.off("booking_updated", handleBookingUpdated);
+    };
   }, []);
 
   const copyTextToClipboard = async (text) => {
@@ -1035,9 +1058,30 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
     });
   }, [bookingsList, globalSearch, bookingStatusFilter]);
 
+  const activeUserIds = useMemo(() => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const ids = new Set();
+    bookingsList.forEach((b) => {
+      if (new Date(b.createdAt) >= sevenDaysAgo) {
+        if (b.customerId) ids.add(b.customerId);
+        if (b.customer?._id) ids.add(b.customer._id);
+        if (b.customer?.userId) ids.add(b.customer.userId);
+      }
+    });
+    return ids;
+  }, [bookingsList]);
+
   // Filters for User list
   const filteredUsers = useMemo(() => {
     return usersList.filter((u) => {
+      if (showActiveUsersOnly) {
+        const id1 = u._id;
+        const id2 = u.userId;
+        if (!activeUserIds.has(id1) && !activeUserIds.has(id2)) {
+          return false;
+        }
+      }
       return (
         (u.name || "").toLowerCase().includes(globalSearch.toLowerCase()) ||
         (u.email || "").toLowerCase().includes(globalSearch.toLowerCase()) ||
@@ -1045,7 +1089,7 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
         (u.userId || "").toLowerCase().includes(globalSearch.toLowerCase())
       );
     });
-  }, [usersList, globalSearch]);
+  }, [usersList, globalSearch, showActiveUsersOnly, activeUserIds]);
 
   // Filters for Support list
   const filteredSupport = useMemo(() => {
@@ -1351,58 +1395,65 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
                                 </div>
                               </div>
 
-                              <div className="detail-card">
-                                <h3><UserCheck size={14} /> Professional Assignment</h3>
-                                <div className="assign-form">
-                                  <label>
+                              <div className="brave-theme-card" style={{ padding: "24px", marginTop: "16px" }}>
+                                <h3><UserCheck size={18} style={{ verticalAlign: "middle", marginRight: "8px", color: "#4f46e5" }} /> Professional Assignment</h3>
+                                <div style={{ margin: "16px 0", textAlign: "left" }}>
+                                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#4b5563", textTransform: "uppercase", marginBottom: "8px", display: "block" }}>
                                     Booking status
-                                    <select
-                                      value={b.bookingStatus || "Confirmed"}
-                                      onChange={(e) => handleUpdateBookingStatus(bookingKey, e.target.value)}
-                                      disabled={updatingStatusId === bookingKey}
-                                    >
-                                      <option value="Confirmed">Confirmed</option>
-                                      <option value="Professional Assigned">Professional Assigned</option>
-                                      <option value="On The Way">On The Way</option>
-                                      <option value="Service In Progress">Service In Progress</option>
-                                      <option value="Completed">Completed</option>
-                                      <option value="Cancelled">Cancelled</option>
-                                    </select>
                                   </label>
-                                  <label>
-                                    Name
+                                  <select
+                                    value={b.bookingStatus || "Confirmed"}
+                                    onChange={(e) => handleUpdateBookingStatus(bookingKey, e.target.value)}
+                                    disabled={updatingStatusId === bookingKey}
+                                    className="brave-input"
+                                  >
+                                    <option value="Confirmed">Confirmed</option>
+                                    <option value="Professional Assigned">Professional Assigned</option>
+                                    <option value="On The Way">On The Way</option>
+                                    <option value="Service In Progress">Service In Progress</option>
+                                    <option value="Completed">Completed</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                  </select>
+                                </div>
+                                <div className="brave-theme-inner-card brave-assign-grid">
+                                  <div className="brave-input-group">
+                                    <label>Professional's Name</label>
                                     <input
+                                      className="brave-input"
                                       value={assignForm.professionalName}
                                       onChange={(e) => setAssignForm(prev => ({ ...prev, professionalName: e.target.value }))}
-                                      placeholder="Professional's Name"
+                                      placeholder="Name"
                                     />
-                                  </label>
-                                  <label>
-                                    Agent mobile
+                                  </div>
+                                  <div className="brave-input-group">
+                                    <label>Agent mobile</label>
                                     <input
+                                      className="brave-input"
                                       value={assignForm.professionalPhone}
                                       onChange={(e) => setAssignForm(prev => ({ ...prev, professionalPhone: e.target.value }))}
                                       placeholder="99988877766"
                                     />
-                                  </label>
-                                  <label>
-                                    Estimated Arrival
+                                  </div>
+                                  <div className="brave-input-group">
+                                    <label>Estimated Arrival</label>
                                     <input
+                                      className="brave-input"
                                       value={assignForm.estimatedArrival}
                                       onChange={(e) => setAssignForm(prev => ({ ...prev, estimatedArrival: e.target.value }))}
-                                      placeholder="e.g. 15 minutes"
+                                      placeholder="e.g. 15 mins"
                                     />
-                                  </label>
-                                  <label>
-                                    Photo URL (optional)
+                                  </div>
+                                  <div className="brave-input-group">
+                                    <label>Photo URL</label>
                                     <input
+                                      className="brave-input"
                                       value={assignForm.professionalPhoto}
                                       onChange={(e) => setAssignForm(prev => ({ ...prev, professionalPhoto: e.target.value }))}
                                       placeholder="https://..."
                                     />
-                                  </label>
+                                  </div>
                                   <button
-                                    className="btn btn-primary btn-small"
+                                    className="brave-theme-btn brave-assign-full"
                                     type="button"
                                     onClick={() => handleAssignProfessional(bookingKey)}
                                     disabled={assigningId === bookingKey}
@@ -1844,7 +1895,21 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
 
   const renderUsers = () => (
     <div className="admin-users-tab animated-fade-in">
-      <div className="user-admin-toolbar">
+      <div className="user-admin-toolbar" style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+        <button
+          type="button"
+          className={`btn btn-small ${!showActiveUsersOnly ? 'btn-primary' : 'btn-ghost'}`}
+          onClick={() => setShowActiveUsersOnly(false)}
+        >
+          All Users
+        </button>
+        <button
+          type="button"
+          className={`btn btn-small ${showActiveUsersOnly ? 'btn-primary' : 'btn-ghost'}`}
+          onClick={() => setShowActiveUsersOnly(true)}
+        >
+          Active Users (Last 7 days)
+        </button>
       </div>
 
       <div className="admin-table-wrapper">

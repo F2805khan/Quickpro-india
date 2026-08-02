@@ -355,7 +355,7 @@ function Navbar({ cartCount = 0 }) {
       await logoutSession();
       setOpen(false);
       toast.success("Logged out successfully.");
-      navigate("/auth", { replace: true });
+      navigate("?login=true", { replace: true });
     } catch {
       toast.error("Could not log out.");
     } finally {
@@ -376,7 +376,7 @@ function Navbar({ cartCount = 0 }) {
               {label}
             </NavLink>
           ))}
-          <Link className="mobile-account-link" to={user ? "/profile" : "/auth"} onClick={() => setOpen(false)}>
+          <Link className="mobile-account-link" to={user ? "/profile" : "?login=true"} onClick={() => setOpen(false)}>
             <UserRound size={15} /> {user ? "Profile" : "Login / Signup"}
           </Link>
           {user && (
@@ -396,7 +396,7 @@ function Navbar({ cartCount = 0 }) {
               {displayUserName(user)}
             </Link>
           ) : (
-            <Link className="btn btn-primary compact" to="/auth" style={{ background: "var(--accent)", borderRadius: "20px", minHeight: "36px", fontSize: "12px" }}>
+            <Link className="btn btn-primary compact" to="?login=true" style={{ background: "var(--accent)", borderRadius: "20px", minHeight: "36px", fontSize: "12px" }}>
               Login / Signup
             </Link>
           )}
@@ -707,7 +707,7 @@ function CartPage({ cartItems, onUpdateQuantity, onRemove }) {
             onRemoved={() => setAppliedCoupon(null)}
             onLoginRequired={() => {
               toast.error("Sign in before applying a coupon.");
-              navigate("/auth");
+              navigate("?login=true");
             }}
             className="cart-coupon-box"
           />
@@ -870,8 +870,8 @@ function BookingPage({ cartItems = [], onUpdateCartQuantity, catalogServices = f
 
   const confirmBooking = async () => {
     if (!user) {
-      toast.error("Sign in before confirming your booking.");
-      navigate("/auth");
+      toast.error("Sign in to book a service.");
+      navigate("?login=true");
       return;
     }
 
@@ -1053,7 +1053,7 @@ function BookingPage({ cartItems = [], onUpdateCartQuantity, catalogServices = f
             </div>
             {!paymentMethods.length && <p className="payment-empty">No payment method is available right now. Please contact support.</p>}
             <div style={{ marginTop: "20px", marginBottom: "10px" }}>
-              <CouponApplyBox orderAmount={bookingSubtotal} user={user} appliedCoupon={appliedCoupon} onApplied={setAppliedCoupon} onRemoved={() => setAppliedCoupon(null)} onLoginRequired={() => { toast.error("Sign in before applying a coupon."); navigate("/auth"); }} className="booking-sidebar-coupon" />
+              <CouponApplyBox orderAmount={bookingSubtotal} user={user} appliedCoupon={appliedCoupon} onApplied={setAppliedCoupon} onRemoved={() => setAppliedCoupon(null)} onLoginRequired={() => { toast.error("Sign in before applying a coupon."); navigate("?login=true"); }} className="booking-sidebar-coupon" />
               {appliedCoupon && <div className="simple-savings coupon-saving-line" style={{ marginTop: "10px" }}><CheckCircle2 size={14} /> Coupon saved ₹{bookingDiscount}</div>}
             </div>
             <div className="review-box"><span>{selectedDayLabel} at {selectedTime} · Qty {quantity}{appliedCoupon ? ` · Coupon ${appliedCoupon.code}` : ""}</span><strong>{appliedCoupon ? <><small>₹{bookingSubtotal}</small> ₹{bookingTotal}</> : `₹${bookingTotal}`}</strong></div><div className="form-actions"><button className="btn btn-ghost" onClick={() => setStep(2)}>Back</button><button className="btn btn-primary" onClick={confirmBooking} disabled={processing || !paymentMethods.length}>{processing ? "Checking payment status..." : paymentMethods.find(({ method }) => method === paymentMethod)?.type === "cash" ? "Confirm cash booking" : "Pay and confirm"} {!processing && <ArrowRight size={16} />}</button></div></div>}
@@ -1331,6 +1331,15 @@ function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [location.pathname]);
 
+  const searchParams = new URLSearchParams(location.search);
+  const showAuthModal = searchParams.get("login") === "true";
+
+  const closeAuthModal = useCallback(() => {
+    const nextParams = new URLSearchParams(location.search);
+    nextParams.delete("login");
+    navigate({ search: nextParams.toString() }, { replace: true });
+  }, [location.search, navigate]);
+
   return (
     <>
       {showSplash && <SplashScreen onFinished={onSplashFinished} />}
@@ -1345,8 +1354,8 @@ function App() {
             <Route path="/pricing" element={<Navigate to="/" replace />} />
             <Route path="/vision" element={<AiGeneratorPage />} />
             <Route path="/book/:serviceId" element={<BookingPage catalogServices={services} cartItems={cartItems} onUpdateCartQuantity={updateCartQuantity} />} />
-            <Route path="/auth" element={<LoginSignup />} />
-            <Route path="/login" element={<Navigate to="/auth" replace />} />
+            <Route path="/auth" element={<Navigate to="?login=true" replace />} />
+            <Route path="/login" element={<Navigate to="?login=true" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/profile" element={<Profile />} />
             {import.meta.env.DEV && <Route path="/profile-skeleton-preview" element={<ProfileSkeletonCapture />} />}
@@ -1367,6 +1376,11 @@ function App() {
       </div>
       <Footer />
       <CookieBanner />
+      {showAuthModal && (
+        <Suspense fallback={null}>
+          <LoginSignup compact onDismiss={closeAuthModal} onAuthenticated={closeAuthModal} />
+        </Suspense>
+      )}
     </>
   );
 }

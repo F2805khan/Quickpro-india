@@ -22,6 +22,7 @@ import { Skeleton } from "boneyard-js/react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { api } from "../api/client.js";
+import socket from "../api/socket.js";
 import { getCachedUserProfile, getUserProfile, mergeProfiles, onProfileChanged, profileDefaults, publishProfileUpdate, saveUserProfile } from "../data/profileStore.js";
 import { getCachedUserBookings, getUserBookings } from "../data/bookingStore.js";
 import { displayUserName, isPrivilegedUser, onProfileUpdated, onSessionChanged } from "../data/sessionStore.js";
@@ -286,7 +287,7 @@ function Profile({ dashboardLayout = false }) {
 
     const loadProfile = async (nextUser) => {
       if (!nextUser) {
-        navigate("/auth", { replace: true });
+        navigate("?login=true", { replace: true });
         return;
       }
 
@@ -356,6 +357,27 @@ function Profile({ dashboardLayout = false }) {
       unsubscribe();
     };
   }, [navigate, setupMode, editQuery]);
+
+  useEffect(() => {
+    const handleBookingUpdated = (updatedBooking) => {
+      setBookings((prevBookings) => {
+        if (!prevBookings) return prevBookings;
+        // Check if the booking exists in the current user's list before updating
+        const exists = prevBookings.some((b) => b.bookingId === updatedBooking.bookingId);
+        if (!exists && user?.uid && updatedBooking.userId === user.uid) {
+           return [updatedBooking, ...prevBookings];
+        }
+        return prevBookings.map((b) =>
+          b.bookingId === updatedBooking.bookingId ? updatedBooking : b
+        );
+      });
+    };
+
+    socket.on("booking_updated", handleBookingUpdated);
+    return () => {
+      socket.off("booking_updated", handleBookingUpdated);
+    };
+  }, [user]);
 
   useEffect(() => {
     const unsubscribe = onProfileChanged((savedProfile) => {
@@ -730,7 +752,6 @@ function Profile({ dashboardLayout = false }) {
           <button className={profileSection === "overview" ? "active" : ""} type="button" onClick={() => setProfileSection("overview")}><UserRound size={17} /> Profile</button>
           <button className={profileSection === "history" ? "active" : ""} type="button" onClick={() => setProfileSection("history")}><History size={17} /> History</button>
           <button className={profileSection === "support" ? "active" : ""} type="button" onClick={() => setProfileSection("support")}><MessageCircle size={17} /> Support</button>
-          {canOpenBackend && <a href={ADMIN_PANEL_URL}><LayoutDashboard size={17} /> Admin Panel</a>}
         </aside>
       )}
 

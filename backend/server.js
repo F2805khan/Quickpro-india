@@ -5,6 +5,8 @@ import cors from "cors";
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createServer } from "node:http";
+import { Server } from "socket.io";
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -90,7 +92,23 @@ const start = async () => {
   if (!isEmailDeliveryConfigured()) {
     console.warn("Resend email delivery is disabled. Set RESEND_API_KEY in backend/.env and restart the backend.");
   }
-  app.listen(PORT, () => {
+  const httpServer = createServer(app);
+  const io = new Server(httpServer, {
+    cors: {
+      origin: allowedOrigins.length ? allowedOrigins : true,
+      credentials: true
+    }
+  });
+  app.set("io", io);
+
+  io.on("connection", (socket) => {
+    console.log("Client connected via socket:", socket.id);
+    socket.on("disconnect", () => {
+      console.log("Client disconnected:", socket.id);
+    });
+  });
+
+  httpServer.listen(PORT, () => {
     console.log(`fixOindia API running on port ${PORT}`);
   });
 };

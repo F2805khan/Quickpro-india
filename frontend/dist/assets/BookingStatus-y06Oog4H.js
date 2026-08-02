@@ -1,1 +1,0 @@
-import{_ as t,j as a,$ as r}from"./index-CzNFtDwI.js";function s(){const{bookingId:e}=t(),o=e?.replace(/^#/,"")||"";return a.jsx(r,{to:o?`/profile?booking=${encodeURIComponent(o)}&track=live`:"/profile",replace:!0})}export{s as default};

@@ -250,13 +250,15 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
 
   if (currentUser) {
     const signedInCard = (
-      <div className="auth-card auth-card-simple auth-signed-card">
-        <span className="badge"><ShieldCheck size={15} /> Signed in</span>
-        <h1>{currentUser.displayName || currentUser.email || "fixOindia account"}</h1>
+      <div className="brave-theme-card" style={{ width: '100%', maxWidth: '440px', margin: '0 auto' }}>
+        <div className="brave-icon-circle">
+          <ShieldCheck size={32} />
+        </div>
+        <h1>{currentUser.displayName || currentUser.email || "Welcome!"}</h1>
         <p>Your account is active and ready for your next booking.</p>
-        <div className="auth-signed-actions">
-          <button className="btn btn-primary" onClick={() => accountDestination(currentUser)}>Continue</button>
-          {!compact && <button className="btn btn-ghost" onClick={onLogout}>Logout</button>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
+          <button className="brave-theme-btn" onClick={() => accountDestination(currentUser)}>Continue</button>
+          {!compact && <button className="brave-theme-btn-ghost" style={{ marginTop: '0' }} onClick={onLogout}>Logout</button>}
         </div>
       </div>
     );
@@ -280,117 +282,120 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
   }
 
   const authCard = (
-    <div className="auth-card auth-card-simple">
+    <div className="brave-theme-card" style={{ width: '100%', maxWidth: '440px', margin: '0 auto', position: 'relative' }}>
       {compact && (
-        <div className="login-welcome-head">
-          <button className="icon-button" type="button" onClick={onDismiss} aria-label="Close login popup">
-            <X size={18} />
-          </button>
-        </div>
+        <button className="icon-button" type="button" onClick={onDismiss} aria-label="Close login popup" style={{ position: 'absolute', right: '16px', top: '16px' }}>
+          <X size={18} />
+        </button>
       )}
         <div className="auth-form-panel">
-            <div className="auth-simple-head">
-              <span className="badge"><ShieldCheck size={15} /> Secure login</span>
-              <h1>{step === "otp" ? "Verify OTP" : (hasSignupEnabled ? "Login / Signup" : "Login")}</h1>
-              <p>
+            <div className="brave-icon-circle">
+              <ShieldCheck size={32} />
+            </div>
+            <h1>{step === "otp" ? "Verify OTP" : (hasSignupEnabled ? "Ready to start?" : "Login")}</h1>
+            <p>
                 {step === "otp"
                   ? `Enter the OTP sent for ${form.identifier.trim()}.`
                   : step === "identity"
                     ? (isOtpSignupEnabled ? "Enter your phone number or email to receive an OTP. New users will be signed up automatically." : "Enter your phone number or email to receive an OTP to login.")
-                    : "Choose how you want to login."}
-              </p>
-            </div>
+                    : "Connect your account or continue below"}
+            </p>
 
             {step === "choice" ? (
-              <div className="login-choice-grid">
+              <div className="brave-theme-inner-card" style={{ padding: '8px' }}>
                 <button
-                  className={`login-choice-card ${!isGoogleAvailable ? "is-disabled" : ""}`}
+                  className={`brave-choice-btn ${!isGoogleAvailable ? "is-disabled" : ""}`}
                   type="button"
                   onClick={handleGoogleSuccess}
                   disabled={loading || !isGoogleAvailable}
                 >
-                  <span className="google-logo">G</span>
-                  <strong>
-                    Continue with Google
-                    {!isGoogleAvailable && <span className="login-method-badge">Coming Soon</span>}
-                  </strong>
-                  <small>
-                    {isGoogleAvailable
-                      ? (isAuthActionEnabled(googleMethod, "signup") ? "Login or sign up instantly with Gmail" : "Login securely with Gmail")
-                      : "Admin has not enabled Gmail login yet."}
-                  </small>
+                  <div className="brave-choice-icon">
+                    <span className="google-logo" style={{ fontSize: '20px', fontWeight: 'bold' }}>G</span>
+                  </div>
+                  <div className="brave-choice-content">
+                    <strong>Continue with Google</strong>
+                    <small>
+                      {isGoogleAvailable ? "Login or sign up instantly" : "Coming Soon"}
+                    </small>
+                  </div>
                 </button>
                 <button
-                  className={`login-choice-card ${!isOtpAvailable ? "is-disabled" : ""}`}
+                  className={`brave-choice-btn ${!isOtpAvailable ? "is-disabled" : ""}`}
                   type="button"
                   onClick={() => {
                     if (isOtpAvailable) setStep("identity");
                   }}
                   disabled={loading || !isOtpAvailable}
+                  style={{ marginBottom: '0' }}
                 >
-                  <Phone size={24} />
-                  <strong>
-                    Phone / Email OTP
-                    {!isOtpAvailable && <span className="login-method-badge">Coming Soon</span>}
-                  </strong>
-                  <small>
-                    {isOtpAvailable
-                      ? (isOtpSignupEnabled ? "Login or sign up with verification code" : "Login with verification code")
-                      : "Admin has not enabled OTP login yet."}
-                  </small>
+                  <div className="brave-choice-icon">
+                    <Phone size={20} />
+                  </div>
+                  <div className="brave-choice-content">
+                    <strong>Phone / Email OTP</strong>
+                    <small>
+                      {isOtpAvailable ? "Use verification code" : "Coming Soon"}
+                    </small>
+                  </div>
                 </button>
                 {compact && (
-                  <button className="btn btn-ghost full auth-secondary-action" type="button" onClick={onDismiss} disabled={loading}>
+                  <button className="brave-theme-btn-ghost" style={{ width: '100%', marginTop: '16px' }} type="button" onClick={onDismiss} disabled={loading}>
                     Browse without login
                   </button>
                 )}
               </div>
             ) : step === "identity" ? (
-              <form className="auth-form simple-login-form" onSubmit={requestOtp}>
-                <label>
-                  Email or phone number
-                  <div className="login-identity-input">
-                    {isPhoneLike(form.identifier) ? <Phone size={17} /> : <Mail size={17} />}
+              <form className="auth-form" onSubmit={requestOtp}>
+                <div className="brave-theme-inner-card">
+                  <div className="brave-input-group" style={{ marginBottom: 0 }}>
+                    <label>Email or phone number</label>
                     <input
+                      className="brave-input"
                       required
                       name="identifier"
                       value={form.identifier}
                       onChange={update}
-                      placeholder="you@example.com or +91 98765 43210"
+                      placeholder="you@example.com or +91 98765..."
                       autoComplete="username"
                     />
                   </div>
-                </label>
-                <button className="btn btn-primary full" type="submit" disabled={loading}>
+                </div>
+                <button className="brave-theme-btn" style={{ width: '100%' }} type="submit" disabled={loading}>
                   {loading ? "Sending OTP..." : "Send OTP"}
                 </button>
-                <button className="btn btn-ghost full auth-secondary-action" type="button" onClick={() => setStep("choice")} disabled={loading}>
+                <button className="brave-theme-btn-ghost" style={{ width: '100%' }} type="button" onClick={() => setStep("choice")} disabled={loading}>
                   Back to login options
                 </button>
               </form>
             ) : (
-              <form className="auth-form simple-login-form" onSubmit={verifyOtp}>
-                <label>
-                  OTP verification code
-                  <input
-                    required
-                    name="otp"
-                    value={form.otp}
-                    onChange={update}
-                    placeholder="Enter 6-digit OTP"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                  />
-                </label>
-                <button className="btn btn-primary full" type="submit" disabled={loading}>
+              <form className="auth-form" onSubmit={verifyOtp}>
+                <div className="brave-theme-inner-card">
+                  <div className="brave-input-group" style={{ marginBottom: 0 }}>
+                    <label>OTP verification code</label>
+                    <input
+                      className="brave-input"
+                      required
+                      name="otp"
+                      value={form.otp}
+                      onChange={update}
+                      placeholder="Enter 6-digit OTP"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      style={{ textAlign: 'center', fontSize: '20px', letterSpacing: '2px' }}
+                    />
+                  </div>
+                </div>
+                <button className="brave-theme-btn" style={{ width: '100%' }} type="submit" disabled={loading}>
                   {loading ? "Verifying..." : "Verify and login"}
                 </button>
-                <button className="btn btn-ghost full auth-secondary-action" type="button" onClick={requestOtp} disabled={loading}>
-                  Resend OTP
-                </button>
-                <button className="btn btn-ghost full auth-secondary-action" type="button" onClick={resetFlow}>
-                  Change email or phone
-                </button>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
+                  <button className="brave-theme-btn-ghost" style={{ width: '100%', marginTop: '0' }} type="button" onClick={requestOtp} disabled={loading}>
+                    Resend OTP
+                  </button>
+                  <button className="brave-theme-btn-ghost" style={{ width: '100%', marginTop: '0' }} type="button" onClick={resetFlow}>
+                    Change contact
+                  </button>
+                </div>
               </form>
             )}
           </div>
