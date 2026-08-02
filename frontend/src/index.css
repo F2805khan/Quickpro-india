@@ -3710,41 +3710,41 @@ input:required:placeholder-shown:focus, textarea:required:placeholder-shown:focu
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-/* --- Brave Rewards Theme for Auth and Assign --- */
+/* --- Theme for Auth and Assign --- */
 .brave-theme-card {
-  background: linear-gradient(180deg, #f3e8ff 0%, #ffffff 100%);
+  background: linear-gradient(180deg, var(--accent-soft) 0%, var(--surface) 100%);
   border-radius: 24px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(139, 92, 246, 0.1);
+  border: 1px solid var(--accent-border);
   padding: 36px 32px;
   text-align: center;
 }
 
 .brave-theme-card h1, .brave-theme-card h2, .brave-theme-card h3 {
-  color: #111827;
+  color: var(--text);
   letter-spacing: -0.5px;
   margin-top: 16px;
   font-size: 24px;
 }
 
 .brave-theme-card p {
-  color: #6b7280;
+  color: var(--secondary);
   font-size: 14px;
   margin-bottom: 24px;
 }
 
 .brave-theme-inner-card {
-  background: #ffffff;
+  background: var(--surface);
   border-radius: 16px;
   padding: 20px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-  border: 1px solid #f3f4f6;
+  border: 1px solid var(--border);
   margin-bottom: 16px;
   text-align: left;
 }
 
 .brave-theme-btn {
-  background: #4f46e5 !important;
+  background: var(--accent) !important;
   color: #ffffff !important;
   border-radius: 9999px !important;
   border: none !important;
@@ -3754,13 +3754,13 @@ input:required:placeholder-shown:focus, textarea:required:placeholder-shown:focu
 }
 
 .brave-theme-btn:hover {
-  background: #4338ca !important;
+  background: var(--accent-dim) !important;
   transform: translateY(-1px) !important;
 }
 
 .brave-theme-btn-ghost {
-  background: #f3f4f6 !important;
-  color: #4b5563 !important;
+  background: var(--raised) !important;
+  color: var(--accent-ink) !important;
   border-radius: 9999px !important;
   border: none !important;
   font-weight: 600 !important;
@@ -3770,21 +3770,21 @@ input:required:placeholder-shown:focus, textarea:required:placeholder-shown:focu
 }
 
 .brave-theme-btn-ghost:hover {
-  background: #e5e7eb !important;
+  background: var(--accent-border) !important;
 }
 
 .brave-icon-circle {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ffffff, #f5f3ff);
-  border: 2px solid #e0e7ff;
+  background: linear-gradient(135deg, var(--surface), var(--accent-soft));
+  border: 2px solid var(--accent-border);
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 16px;
-  box-shadow: 0 8px 16px rgba(79, 70, 229, 0.1);
-  color: #4f46e5;
+  box-shadow: 0 8px 16px var(--glow);
+  color: var(--accent);
 }
 
 .brave-icon-circle svg {
@@ -3797,8 +3797,8 @@ input:required:placeholder-shown:focus, textarea:required:placeholder-shown:focu
   align-items: center;
   width: 100%;
   padding: 16px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 16px;
   margin-bottom: 12px;
   transition: all 0.2s ease;
@@ -3806,8 +3806,8 @@ input:required:placeholder-shown:focus, textarea:required:placeholder-shown:focu
   text-align: left;
 }
 .brave-choice-btn:hover {
-  border-color: #c7d2fe;
-  background: #faf5ff;
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 .brave-choice-btn.is-disabled {
   opacity: 0.5;

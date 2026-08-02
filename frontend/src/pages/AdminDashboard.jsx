@@ -2198,36 +2198,41 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
         </div>
 
         {showAgentForm && (
-          <form className="admin-form" onSubmit={submitAgent} style={{ marginBottom: '30px' }}>
-            <div className="admin-form-grid">
-              <label>
-                Full Name *
-                <input required value={agentForm.name} onChange={(e) => setAgentForm({ ...agentForm, name: e.target.value })} placeholder="John Doe" />
-              </label>
-              <label>
-                Phone Number
-                <input value={agentForm.phone} onChange={(e) => setAgentForm({ ...agentForm, phone: e.target.value })} placeholder="9998887776" />
-              </label>
-              <label>
-                Photo URL
-                <input value={agentForm.photo} onChange={(e) => setAgentForm({ ...agentForm, photo: e.target.value })} placeholder="https://..." />
-              </label>
-              <label>
-                Status
-                <select value={agentForm.status} onChange={(e) => setAgentForm({ ...agentForm, status: e.target.value })}>
-                  <option value="online">Online (Ready to work)</option>
-                  <option value="working">Working (Assigned)</option>
-                  <option value="offline">Offline</option>
-                </select>
-              </label>
-            </div>
-            <div className="admin-form-actions">
-              <button type="button" className="btn btn-ghost" onClick={() => setShowAgentForm(false)}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={agentSaving}>
-                {agentSaving ? "Saving..." : editingAgentId ? "Update Agent" : "Add Agent"}
-              </button>
-            </div>
-          </form>
+          <div className="brave-theme-inner-card" style={{ marginBottom: '30px', padding: '24px' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px', color: 'var(--accent-ink)' }}>
+              {editingAgentId ? "Edit Agent" : "Add New Agent"}
+            </h3>
+            <form className="admin-form" onSubmit={submitAgent}>
+              <div className="admin-form-grid">
+                <label>
+                  Full Name *
+                  <input required value={agentForm.name} onChange={(e) => setAgentForm({ ...agentForm, name: e.target.value })} placeholder="John Doe" />
+                </label>
+                <label>
+                  Phone Number
+                  <input value={agentForm.phone} onChange={(e) => setAgentForm({ ...agentForm, phone: e.target.value })} placeholder="9998887776" />
+                </label>
+                <label>
+                  Photo URL
+                  <input value={agentForm.photo} onChange={(e) => setAgentForm({ ...agentForm, photo: e.target.value })} placeholder="https://..." />
+                </label>
+                <label>
+                  Status
+                  <select value={agentForm.status} onChange={(e) => setAgentForm({ ...agentForm, status: e.target.value })}>
+                    <option value="online">Online (Ready to work)</option>
+                    <option value="working">Working (Assigned)</option>
+                    <option value="offline">Offline</option>
+                  </select>
+                </label>
+              </div>
+              <div className="admin-form-actions" style={{ marginTop: '20px' }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setShowAgentForm(false)}>Cancel</button>
+                <button type="submit" className="brave-theme-btn" disabled={agentSaving}>
+                  {agentSaving ? "Saving..." : editingAgentId ? "Update Agent" : "Add Agent"}
+                </button>
+              </div>
+            </form>
+          </div>
         )}
 
         <div className="admin-table-wrapper">
