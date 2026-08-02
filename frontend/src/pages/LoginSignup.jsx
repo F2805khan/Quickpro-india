@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "../utils/notifications.js";
-import { AlertCircle, CalendarDays, Mail, Phone, ShieldCheck, Sparkles, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, CalendarDays, Mail, Phone, ShieldCheck, Sparkles, X } from "lucide-react";
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
 import { api } from "../api/client.js";
 import { auth } from "../components/firebase.js";
@@ -283,6 +283,11 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
 
   const authCard = (
     <div className="brave-theme-card" style={{ width: '100%', maxWidth: '440px', margin: '0 auto', position: 'relative' }}>
+      {!compact && (
+        <button className="icon-button" type="button" onClick={() => navigate("/")} aria-label="Go back" style={{ position: 'absolute', left: '16px', top: '16px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+          <ArrowLeft size={18} />
+        </button>
+      )}
       {compact && (
         <button className="icon-button" type="button" onClick={onDismiss} aria-label="Close login popup" style={{ position: 'absolute', right: '16px', top: '16px' }}>
           <X size={18} />
