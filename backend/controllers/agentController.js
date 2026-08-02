@@ -23,7 +23,6 @@ export const createAgent = async (req, res) => {
     const agent = await Agent.create({
       name,
       phone: phone || "",
-      photo: photo || "",
       status: status || "offline",
     });
 
@@ -40,9 +39,10 @@ export const updateAgent = async (req, res) => {
     const agentId = req.params.id;
     const updates = req.body;
     
-    // Prevent overriding the ID
+    // Prevent overriding the ID and remove unmapped columns
     delete updates._id;
     delete updates.id;
+    delete updates.photo;
 
     const agent = await Agent.update(agentId, updates);
     
