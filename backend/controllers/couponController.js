@@ -17,6 +17,12 @@ export const createCoupon = asyncHandler(async (req, res) => {
   const payload = normalizeCouponPayload(req.body);
   assertCouponPayload(payload);
 
+  const existing = await Coupon.findOne({ where: { code: payload.code } });
+  if (existing) {
+    res.status(400);
+    throw new Error("A coupon with this code already exists");
+  }
+
   const coupon = await Coupon.create(payload);
   res.status(201).json(coupon);
 });
@@ -31,6 +37,14 @@ export const updateCoupon = asyncHandler(async (req, res) => {
 
   const payload = normalizeCouponPayload({ ...coupon.toJSON(), ...req.body });
   assertCouponPayload(payload);
+
+  if (payload.code !== coupon.code) {
+    const existing = await Coupon.findOne({ where: { code: payload.code } });
+    if (existing) {
+      res.status(400);
+      throw new Error("A coupon with this code already exists");
+    }
+  }
 
   await coupon.update(payload);
   res.json(coupon);

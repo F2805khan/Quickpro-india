@@ -25,7 +25,7 @@ import ensureAdminUser from "./utils/ensureAdminUser.js";
 import { isEmailDeliveryConfigured } from "./utils/email.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const adminDistPath = path.resolve(__dirname, "../admin/dist");
+const adminDistPath = path.resolve(__dirname, "./admin/dist");
 
 const app = express();
 const allowedOrigins = process.env.CLIENT_URL
@@ -70,17 +70,15 @@ app.use("/api/images", imageRoutes);
 app.use("/api/location", locationRoutes);
 app.use("/api/events", eventRoutes);
 
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(adminDistPath));
-  app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/api")) {
-      return next();
-    }
-    return res.sendFile(path.join(adminDistPath, "index.html"), (error) => {
-      if (error) next(error);
-    });
+app.use(express.static(adminDistPath));
+app.get("*", (req, res, next) => {
+  if (req.path.startsWith("/api")) {
+    return next();
+  }
+  return res.sendFile(path.join(adminDistPath, "index.html"), (error) => {
+    if (error) next(error);
   });
-}
+});
 
 app.use(notFound);
 app.use(errorHandler);

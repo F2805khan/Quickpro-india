@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const adminRoot = path.resolve(__dirname, "../admin");
+const adminRoot = path.resolve(__dirname, "../backend/admin");
 const require = createRequire(import.meta.url);
 const packageRoot = (name) => path.dirname(require.resolve(`${name}/package.json`));
 

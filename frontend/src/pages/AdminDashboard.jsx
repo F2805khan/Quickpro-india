@@ -243,6 +243,8 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
   const [couponForm, setCouponForm] = useState(blankCoupon);
   const [couponSaving, setCouponSaving] = useState(false);
   const [deletingCouponId, setDeletingCouponId] = useState(null);
+  const [editingCouponId, setEditingCouponId] = useState(null);
+  const [showAdvancedCouponOptions, setShowAdvancedCouponOptions] = useState(false);
   
   // Custom states for complete lists
   const [bookingsList, setBookingsList] = useState([]);
@@ -696,7 +698,10 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
     }));
   };
 
-  const resetCouponForm = () => setCouponForm(blankCoupon);
+  const resetCouponForm = () => {
+    setCouponForm(blankCoupon);
+    setEditingCouponId(null);
+  };
 
   const getCouponId = (coupon) => coupon?._id || coupon?.id;
 
@@ -704,7 +709,7 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
     event.preventDefault();
     setCouponSaving(true);
     try {
-      await api.createAdminCoupon({
+      const couponPayload = {
         ...couponForm,
         code: couponForm.code.trim(),
         discountValue: Number(couponForm.discountValue),
@@ -712,10 +717,16 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
         maxDiscount: couponForm.maxDiscount === "" ? null : Number(couponForm.maxDiscount),
         usageLimit: couponForm.usageLimit === "" ? null : Number(couponForm.usageLimit),
         expiresAt: couponForm.expiresAt ? new Date(couponForm.expiresAt).toISOString() : null
-      });
+      };
+
+      if (editingCouponId) {
+        await api.updateAdminCoupon(editingCouponId, couponPayload);
+      } else {
+        await api.createAdminCoupon(couponPayload);
+      }
       resetCouponForm();
       await loadCoupons();
-      toast.success("Coupon created.");
+      toast.success(editingCouponId ? "Coupon updated." : "Coupon created.");
     } catch (error) {
       toast.error(error.message || "Could not save coupon.");
     } finally {
@@ -733,6 +744,31 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
     } catch (error) {
       toast.error(error.message || "Could not update coupon.");
     }
+  };
+
+  const editCoupon = (coupon) => {
+    const couponId = getCouponId(coupon);
+    if (!couponId) return;
+    setEditingCouponId(couponId);
+    setCouponForm({
+      code: coupon.code || "",
+      discountType: coupon.discountType || "flat",
+      discountValue: coupon.discountValue || "",
+      minOrderAmount: coupon.minOrderAmount || "",
+      maxDiscount: coupon.maxDiscount || "",
+      usageLimit: coupon.usageLimit || "",
+      expiresAt: coupon.expiresAt ? new Date(coupon.expiresAt).toISOString().slice(0, 16) : "",
+      isActive: coupon.isActive !== false
+    });
+  };
+
+  const autoGenerateCouponCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCouponForm(prev => ({ ...prev, code }));
   };
 
   const deleteCoupon = async (coupon) => {
@@ -2342,7 +2378,17 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
         <form className="admin-form coupon-settings-form" onSubmit={submitCoupon}>
           <div className="admin-form-grid">
             <label>
-              Coupon Code
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                Coupon Code
+                <button 
+                  type="button" 
+                  className="btn btn-ghost btn-small" 
+                  onClick={autoGenerateCouponCode}
+                  style={{ fontSize: "11px", padding: "2px 6px" }}
+                >
+                  <RefreshCw size={12} style={{ marginRight: "4px" }} /> Auto
+                </button>
+              </div>
               <input
                 name="code"
                 value={couponForm.code}
@@ -2384,39 +2430,6 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
                 placeholder="0"
               />
             </label>
-            <label>
-              Max Discount Cap
-              <input
-                name="maxDiscount"
-                type="number"
-                min="0"
-                step="10"
-                value={couponForm.maxDiscount}
-                onChange={updateCouponForm}
-                placeholder={couponForm.discountType === "percentage" ? "500" : "Optional"}
-              />
-            </label>
-            <label>
-              Usage Limit
-              <input
-                name="usageLimit"
-                type="number"
-                min="1"
-                step="1"
-                value={couponForm.usageLimit}
-                onChange={updateCouponForm}
-                placeholder="1 (blank = unlimited)"
-              />
-            </label>
-            <label>
-              Expires On
-              <input
-                name="expiresAt"
-                type="datetime-local"
-                value={couponForm.expiresAt}
-                onChange={updateCouponForm}
-              />
-            </label>
             <label className="admin-toggle-field">
               Coupon status
               <span>
@@ -2424,11 +2437,60 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
                 {couponForm.isActive ? "Active - customers can apply" : "Inactive - hidden at checkout"}
               </span>
             </label>
+            
+            <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "center", margin: "8px 0" }}>
+              <button 
+                type="button" 
+                className="btn btn-ghost btn-small"
+                onClick={() => setShowAdvancedCouponOptions(!showAdvancedCouponOptions)}
+              >
+                {showAdvancedCouponOptions ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                {showAdvancedCouponOptions ? "Hide Advanced Options" : "Show Advanced Options"}
+              </button>
+            </div>
+
+            {showAdvancedCouponOptions && (
+              <>
+                <label>
+                  Max Discount Cap
+                  <input
+                    name="maxDiscount"
+                    type="number"
+                    min="0"
+                    step="10"
+                    value={couponForm.maxDiscount}
+                    onChange={updateCouponForm}
+                    placeholder={couponForm.discountType === "percentage" ? "500" : "Optional"}
+                  />
+                </label>
+                <label>
+                  Usage Limit
+                  <input
+                    name="usageLimit"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={couponForm.usageLimit}
+                    onChange={updateCouponForm}
+                    placeholder="1 (blank = unlimited)"
+                  />
+                </label>
+                <label>
+                  Expires On
+                  <input
+                    name="expiresAt"
+                    type="datetime-local"
+                    value={couponForm.expiresAt}
+                    onChange={updateCouponForm}
+                  />
+                </label>
+              </>
+            )}
           </div>
 
           <div className="coupon-form-actions">
             <button className="btn btn-primary" type="submit" disabled={couponSaving}>
-              <Plus size={17} /> {couponSaving ? "Saving" : "Create Coupon"}
+              {editingCouponId ? <Edit3 size={17} /> : <Plus size={17} />} {couponSaving ? "Saving" : editingCouponId ? "Update Coupon" : "Create Coupon"}
             </button>
             <button className="btn btn-soft" type="button" onClick={resetCouponForm} disabled={couponSaving}>
               Reset
@@ -2482,6 +2544,15 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
                             title={coupon.isActive === false ? "Enable coupon" : "Disable coupon"}
                           >
                             {coupon.isActive === false ? <ToggleLeft size={18} /> : <ToggleRight size={18} />}
+                          </button>
+                          <button
+                            className="icon-button"
+                            type="button"
+                            onClick={() => editCoupon(coupon)}
+                            aria-label={`Edit ${coupon.code}`}
+                            title="Edit coupon"
+                          >
+                            <Edit3 size={17} />
                           </button>
                           <button
                             className="icon-button danger"
