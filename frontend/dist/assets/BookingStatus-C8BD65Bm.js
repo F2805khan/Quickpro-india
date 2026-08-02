@@ -1,0 +1,1 @@
+import{j as t}from"./react-vendor-CVEsfzqd.js";import{e as r,N as a}from"./vendor-Pu-ajXGf.js";function s(){const{bookingId:e}=r(),o=e?.replace(/^#/,"")||"";return t.jsx(a,{to:o?`/profile?booking=${encodeURIComponent(o)}&track=live`:"/profile",replace:!0})}export{s as default};

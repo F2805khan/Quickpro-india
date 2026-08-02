@@ -1,8 +1,9 @@
 import { io } from "socket.io-client";
-import { API_BASE_URL } from "../config/urls.js";
+const API_URL = import.meta.env.VITE_API_URL || "/api";
+const SOCKET_URL = API_URL.replace(/\/api\/?$/, "");
 
 // Initialize socket connection to the backend
-const socket = io(API_BASE_URL, {
+const socket = io(SOCKET_URL || "/", {
   autoConnect: true,
   withCredentials: true,
 });
