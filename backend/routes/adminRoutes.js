@@ -1,4 +1,5 @@
 import express from "express";
+import { createAgent, deleteAgent, getAgents, updateAgent } from "../controllers/agentController.js";
 import {
   createBeautyArtist,
   deleteBeautyArtist,
@@ -60,5 +61,10 @@ router.put("/coupons/:id", updateCoupon);
 router.delete("/coupons/:id", deleteCoupon);
 router.get("/support", getSupportInbox);
 router.put("/support/:id/reply", replyToSupportMessage);
+
+router.get("/agents", getAgents);
+router.post("/agents", createAgent);
+router.put("/agents/:id", updateAgent);
+router.delete("/agents/:id", deleteAgent);
 
 export default router;

@@ -1,0 +1,1 @@
+import{Y as t,j as a,_ as r}from"./index-B6w-swOV.js";function s(){const{bookingId:e}=t(),o=e?.replace(/^#/,"")||"";return a.jsx(r,{to:o?`/profile?booking=${encodeURIComponent(o)}&track=live`:"/profile",replace:!0})}export{s as default};

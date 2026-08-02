@@ -178,6 +178,12 @@ export const api = {
     notifyBeautyChanged();
     return response;
   }),
+  getAgents: () => request("/admin/agents"),
+  createAgent: (payload) =>
+    request("/admin/agents", { method: "POST", body: JSON.stringify(payload) }),
+  updateAgent: (id, payload) =>
+    request(`/admin/agents/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteAgent: (id) => request(`/admin/agents/${encodeURIComponent(id)}`, { method: "DELETE" }),
   createBooking: (payload) =>
     request("/bookings", { method: "POST", body: JSON.stringify(payload) }),
   applyCoupon: (payload) =>

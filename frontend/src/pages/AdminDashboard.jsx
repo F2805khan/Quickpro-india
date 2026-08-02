@@ -271,6 +271,13 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
   const [beautyDeletingId, setBeautyDeletingId] = useState(null);
   const [beautyUpdatingId, setBeautyUpdatingId] = useState(null);
 
+  const [agentsList, setAgentsList] = useState([]);
+  const [agentForm, setAgentForm] = useState({ name: "", phone: "", photo: "", status: "offline" });
+  const [showAgentForm, setShowAgentForm] = useState(false);
+  const [editingAgentId, setEditingAgentId] = useState(null);
+  const [agentSaving, setAgentSaving] = useState(false);
+  const [deletingAgentId, setDeletingAgentId] = useState(null);
+
   const daily = overview.daily?.length ? overview.daily : emptyOverview.daily;
   const totals = overview.totals || emptyOverview.totals;
   const managedServices = services.map((service) => ({
@@ -426,6 +433,15 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
     }
   };
 
+  const loadAgents = async () => {
+    try {
+      const data = await api.getAgents();
+      setAgentsList(data || []);
+    } catch (err) {
+      console.error("Failed to load agents:", err);
+    }
+  };
+
   const refreshDashboard = async ({ quiet = false } = {}) => {
     if (!quiet) setRefreshing(true);
     try {
@@ -438,7 +454,8 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
         loadBookingsList(),
         loadUsersList(),
         loadSupportList(),
-        loadBeautyArtists()
+        loadBeautyArtists(),
+        loadAgents()
       ]);
       if (!quiet) toast.success("Backend dashboard refreshed.");
     } catch (error) {
@@ -1416,6 +1433,32 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
                                   </select>
                                 </div>
                                 <div className="brave-theme-inner-card brave-assign-grid">
+                                  <div className="brave-input-group" style={{ gridColumn: "1 / -1" }}>
+                                    <label>Select Agent (Optional)</label>
+                                    <select 
+                                      className="brave-input"
+                                      onChange={(e) => {
+                                        const agentId = e.target.value;
+                                        if (!agentId) return;
+                                        const agent = agentsList.find(a => (a._id || a.id) === agentId);
+                                        if (agent) {
+                                          setAssignForm(prev => ({
+                                            ...prev,
+                                            professionalName: agent.name || "",
+                                            professionalPhone: agent.phone || "",
+                                            professionalPhoto: agent.photo || ""
+                                          }));
+                                        }
+                                      }}
+                                    >
+                                      <option value="">-- Choose an agent --</option>
+                                      {agentsList.map(agent => (
+                                        <option key={agent._id || agent.id} value={agent._id || agent.id}>
+                                          {agent.name} {agent.status === "online" ? "🟢" : agent.status === "working" ? "🔵" : "🔴"}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
                                   <div className="brave-input-group">
                                     <label>Professional's Name</label>
                                     <input
@@ -2063,6 +2106,167 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
     </div>
   );
 
+  const renderAgents = () => {
+    const submitAgent = async (e) => {
+      e.preventDefault();
+      setAgentSaving(true);
+      try {
+        if (editingAgentId) {
+          await api.updateAgent(editingAgentId, agentForm);
+          toast.success("Agent updated successfully");
+        } else {
+          await api.createAgent(agentForm);
+          toast.success("Agent created successfully");
+        }
+        await loadAgents();
+        setShowAgentForm(false);
+        setAgentForm({ name: "", phone: "", photo: "", status: "offline" });
+        setEditingAgentId(null);
+      } catch (err) {
+        toast.error(err.message || "Failed to save agent");
+      } finally {
+        setAgentSaving(false);
+      }
+    };
+
+    const handleDeleteAgent = async (id) => {
+      if (!window.confirm("Are you sure you want to delete this agent?")) return;
+      setDeletingAgentId(id);
+      try {
+        await api.deleteAgent(id);
+        toast.success("Agent deleted");
+        await loadAgents();
+      } catch (err) {
+        toast.error(err.message || "Failed to delete agent");
+      } finally {
+        setDeletingAgentId(null);
+      }
+    };
+
+    const editAgent = (agent) => {
+      setAgentForm({
+        name: agent.name || "",
+        phone: agent.phone || "",
+        photo: agent.photo || "",
+        status: agent.status || "offline"
+      });
+      setEditingAgentId(agent._id || agent.id);
+      setShowAgentForm(true);
+    };
+
+    return (
+      <div className="admin-users-tab animated-fade-in">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div>
+            <h2>Workforce Agents</h2>
+            <p className="text-muted">Manage service professionals and their status.</p>
+          </div>
+          <button className="btn btn-primary" onClick={() => {
+            setAgentForm({ name: "", phone: "", photo: "", status: "offline" });
+            setEditingAgentId(null);
+            setShowAgentForm(true);
+          }}>
+            <Plus size={16} /> Add Agent
+          </button>
+        </div>
+
+        {showAgentForm && (
+          <form className="admin-form" onSubmit={submitAgent} style={{ marginBottom: '30px' }}>
+            <div className="admin-form-grid">
+              <label>
+                Full Name *
+                <input required value={agentForm.name} onChange={(e) => setAgentForm({ ...agentForm, name: e.target.value })} placeholder="John Doe" />
+              </label>
+              <label>
+                Phone Number
+                <input value={agentForm.phone} onChange={(e) => setAgentForm({ ...agentForm, phone: e.target.value })} placeholder="9998887776" />
+              </label>
+              <label>
+                Photo URL
+                <input value={agentForm.photo} onChange={(e) => setAgentForm({ ...agentForm, photo: e.target.value })} placeholder="https://..." />
+              </label>
+              <label>
+                Status
+                <select value={agentForm.status} onChange={(e) => setAgentForm({ ...agentForm, status: e.target.value })}>
+                  <option value="online">Online (Ready to work)</option>
+                  <option value="working">Working (Assigned)</option>
+                  <option value="offline">Offline</option>
+                </select>
+              </label>
+            </div>
+            <div className="admin-form-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setShowAgentForm(false)}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={agentSaving}>
+                {agentSaving ? "Saving..." : editingAgentId ? "Update Agent" : "Add Agent"}
+              </button>
+            </div>
+          </form>
+        )}
+
+        <div className="admin-table-wrapper">
+          <table className="admin-datatable">
+            <thead>
+              <tr>
+                <th>Photo</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {agentsList.length ? (
+                agentsList.map((agent) => {
+                  let statusColor = "var(--danger)";
+                  if (agent.status === "online") statusColor = "var(--success)";
+                  if (agent.status === "working") statusColor = "var(--info)";
+
+                  return (
+                    <tr key={agent._id || agent.id}>
+                      <td>
+                        {agent.photo ? (
+                          <img src={agent.photo} alt={agent.name} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <UserCheck size={20} color="var(--muted)" />
+                          </div>
+                        )}
+                      </td>
+                      <td><strong>{agent.name}</strong></td>
+                      <td>{agent.phone || <span className="text-muted">N/A</span>}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: statusColor, display: 'inline-block' }}></span>
+                          <span style={{ textTransform: 'capitalize' }}>{agent.status}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button type="button" className="btn btn-ghost btn-small" onClick={() => editAgent(agent)}>
+                            <Edit3 size={14} /> Edit
+                          </button>
+                          <button type="button" className="btn btn-ghost btn-small text-danger" onClick={() => handleDeleteAgent(agent._id || agent.id)} disabled={deletingAgentId === (agent._id || agent.id)}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="5" style={{ textAlign: "center", padding: "32px" }}>
+                    <p className="text-muted">No agents found.</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   const renderSettings = () => (
     <div className="admin-settings-tab animated-fade-in">
       <section className="admin-panel payment-settings-panel">
@@ -2346,6 +2550,10 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
               <span>Users Directory</span>
               {usersList.length > 0 && <span className="menu-badge neutral">{usersList.length}</span>}
             </button>
+            <button className={activeTab === "agents" ? "active" : ""} onClick={() => setActiveTab("agents")}>
+              <UserCheck size={16} />
+              <span>Agents</span>
+            </button>
             <button className={activeTab === "support" ? "active" : ""} onClick={() => setActiveTab("support")}>
               <MessageCircle size={16} />
               <span>Support Inbox</span>
@@ -2521,6 +2729,7 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
             {activeTab === "services" && renderServices()}
             {activeTab === "beauty" && renderBeauty()}
             {activeTab === "users" && renderUsers()}
+            {activeTab === "agents" && renderAgents()}
             {activeTab === "support" && renderSupport()}
             {activeTab === "whatsapp" && <WhatsAppManager />}
             {activeTab === "database" && currentUser?.role === "owner" && <DatabaseManager />}
