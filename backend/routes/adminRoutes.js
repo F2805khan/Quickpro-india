@@ -1,5 +1,7 @@
 import express from "express";
-import { createAgent, deleteAgent, getAgents, updateAgent } from "../controllers/agentController.js";
+import { createAgent, deleteAgent, getAgents, updateAgent, bulkUpdateAgents } from "../controllers/agentController.js";
+import { getAlerts, markAlertRead } from "../controllers/alertController.js";
+import { getAuditLogs } from "../controllers/auditController.js";
 import {
   createBeautyArtist,
   deleteBeautyArtist,
@@ -64,7 +66,13 @@ router.put("/support/:id/reply", replyToSupportMessage);
 
 router.get("/agents", getAgents);
 router.post("/agents", createAgent);
+router.put("/agents/bulk", bulkUpdateAgents);
 router.put("/agents/:id", updateAgent);
 router.delete("/agents/:id", deleteAgent);
+
+router.get("/alerts", getAlerts);
+router.put("/alerts/:id/read", markAlertRead);
+
+router.get("/audit-logs", getAuditLogs);
 
 export default router;

@@ -43,7 +43,9 @@ import {
   Star,
   Tag,
   Upload,
-  Video
+  Video,
+  Bell,
+  History
 } from "lucide-react";
 import { api } from "../api/client.js";
 import socket from "../api/socket.js";
@@ -274,11 +276,21 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
   const [beautyUpdatingId, setBeautyUpdatingId] = useState(null);
 
   const [agentsList, setAgentsList] = useState([]);
-  const [agentForm, setAgentForm] = useState({ name: "", phone: "", photo: "", status: "offline" });
+  const [selectedAgentIds, setSelectedAgentIds] = useState([]);
+  const [agentForm, setAgentForm] = useState({ 
+    name: "", phone: "", photo: "", status: "offline", 
+    verification_status: "Pending Verification", skills: "", rating: 0, completed_jobs_count: 0, earnings: 0, latitude: "", longitude: "" 
+  });
   const [showAgentForm, setShowAgentForm] = useState(false);
   const [editingAgentId, setEditingAgentId] = useState(null);
   const [agentSaving, setAgentSaving] = useState(false);
   const [deletingAgentId, setDeletingAgentId] = useState(null);
+  
+  const [alertsList, setAlertsList] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [auditLogsList, setAuditLogsList] = useState([]);
+  const [agentStatusFilter, setAgentStatusFilter] = useState("All");
+  const [agentVerificationFilter, setAgentVerificationFilter] = useState("All");
 
   const daily = overview.daily?.length ? overview.daily : emptyOverview.daily;
   const totals = overview.totals || emptyOverview.totals;
@@ -444,6 +456,24 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
     }
   };
 
+  const loadAlerts = async () => {
+    try {
+      const data = await api.getAdminAlerts();
+      setAlertsList(data || []);
+    } catch (err) {
+      console.error("Failed to load alerts:", err);
+    }
+  };
+
+  const loadAuditLogs = async () => {
+    try {
+      const data = await api.getAuditLogs();
+      setAuditLogsList(data || []);
+    } catch (err) {
+      console.error("Failed to load audit logs:", err);
+    }
+  };
+
   const refreshDashboard = async ({ quiet = false } = {}) => {
     if (!quiet) setRefreshing(true);
     try {
@@ -457,7 +487,9 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
         loadUsersList(),
         loadSupportList(),
         loadBeautyArtists(),
-        loadAgents()
+        loadAgents(),
+        loadAlerts(),
+        loadAuditLogs()
       ]);
       if (!quiet) toast.success("Backend dashboard refreshed.");
     } catch (error) {
@@ -1154,8 +1186,10 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
     services: "Service Catalog Manager",
     beauty: "Beauty Artist Studio",
     users: "Users Directory",
+    agents: "Workforce Agents",
     support: "Support Inbox",
     whatsapp: "WhatsApp Agent",
+    audit: "Audit Logs",
     database: "Database Manager",
     settings: "Settings"
   };
@@ -1166,8 +1200,10 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
     services: "Create, update, toggle availability, or delete services across regions.",
     beauty: "Add beauty artists, assign beauty services, and save artist video uploads.",
     users: "Full list of user profiles, address coordinates, and account management tools.",
+    agents: "Manage service professionals, verifications, and monitor performance.",
     support: "Read customer support queries, view ticket IDs, and send email replies.",
     whatsapp: "Check agent configuration, message customers directly, and send WhatsApp broadcasts.",
+    audit: "Track administrative actions and system modifications.",
     database: "Browse, search, edit, export, and verify every Supabase table (owner only).",
     settings: "Configure payment gateways and manage discount coupons for customer checkout."
   };
@@ -2138,16 +2174,31 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
       e.preventDefault();
       setAgentSaving(true);
       try {
+        const payload = {
+          ...agentForm,
+          rating: Number(agentForm.rating) || 0,
+          completed_jobs_count: Number(agentForm.completed_jobs_count) || 0,
+          earnings: Number(agentForm.earnings) || 0,
+          latitude: agentForm.latitude ? Number(agentForm.latitude) : null,
+          longitude: agentForm.longitude ? Number(agentForm.longitude) : null,
+          skills: typeof agentForm.skills === 'string' 
+            ? agentForm.skills.split(',').map(s => s.trim()).filter(Boolean) 
+            : agentForm.skills
+        };
+
         if (editingAgentId) {
-          await api.updateAgent(editingAgentId, agentForm);
+          await api.updateAgent(editingAgentId, payload);
           toast.success("Agent updated successfully");
         } else {
-          await api.createAgent(agentForm);
+          await api.createAgent(payload);
           toast.success("Agent created successfully");
         }
         await loadAgents();
         setShowAgentForm(false);
-        setAgentForm({ name: "", phone: "", photo: "", status: "offline" });
+        setAgentForm({ 
+          name: "", phone: "", photo: "", status: "offline",
+          verification_status: "Pending Verification", skills: "", rating: 0, completed_jobs_count: 0, earnings: 0, latitude: "", longitude: ""
+        });
         setEditingAgentId(null);
       } catch (err) {
         toast.error(err.message || "Failed to save agent");
@@ -2175,21 +2226,77 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
         name: agent.name || "",
         phone: agent.phone || "",
         photo: agent.photo || "",
-        status: agent.status || "offline"
+        status: agent.status || "offline",
+        verification_status: agent.verification_status || "Pending Verification",
+        skills: Array.isArray(agent.skills) ? agent.skills.join(", ") : (agent.skills || ""),
+        rating: agent.rating || 0,
+        completed_jobs_count: agent.completed_jobs_count || 0,
+        earnings: agent.earnings || 0,
+        latitude: agent.latitude || "",
+        longitude: agent.longitude || ""
       });
       setEditingAgentId(agent._id || agent.id);
       setShowAgentForm(true);
     };
+
+    const handleBulkAction = async (action) => {
+      if (!selectedAgentIds.length) {
+        toast.error("No agents selected");
+        return;
+      }
+      
+      try {
+        let updates = {};
+        if (action === "activate") updates = { status: "online" };
+        else if (action === "deactivate") updates = { status: "offline" };
+        else if (action === "verify") updates = { verification_status: "Verified" };
+        else if (action === "reject") updates = { verification_status: "Rejected" };
+        
+        if (Object.keys(updates).length > 0) {
+          await api.bulkUpdateAgents({ ids: selectedAgentIds, updates });
+          toast.success(`Bulk action '${action}' applied successfully`);
+          setSelectedAgentIds([]);
+          await loadAgents();
+        }
+      } catch (err) {
+        toast.error(err.message || "Bulk action failed");
+      }
+    };
+
+    const toggleAgentSelection = (id) => {
+      setSelectedAgentIds(prev => 
+        prev.includes(id) ? prev.filter(aId => aId !== id) : [...prev, id]
+      );
+    };
+
+    const toggleAllAgents = (e) => {
+      if (e.target.checked) {
+        setSelectedAgentIds(filteredAgents.map(a => a._id || a.id));
+      } else {
+        setSelectedAgentIds([]);
+      }
+    };
+
+    const filteredAgents = agentsList.filter(agent => {
+      const matchStatus = agentStatusFilter === "All" || agent.status === agentStatusFilter;
+      const matchVerification = agentVerificationFilter === "All" || agent.verification_status === agentVerificationFilter;
+      const matchSearch = agent.name.toLowerCase().includes(globalSearch.toLowerCase()) || 
+                          (agent.skills && Array.isArray(agent.skills) && agent.skills.join(" ").toLowerCase().includes(globalSearch.toLowerCase()));
+      return matchStatus && matchVerification && matchSearch;
+    });
 
     return (
       <div className="admin-users-tab animated-fade-in">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div>
             <h2>Workforce Agents</h2>
-            <p className="text-muted">Manage service professionals and their status.</p>
+            <p className="text-muted">Manage service professionals, verification, and performance.</p>
           </div>
           <button className="btn btn-primary" onClick={() => {
-            setAgentForm({ name: "", phone: "", photo: "", status: "offline" });
+            setAgentForm({ 
+              name: "", phone: "", photo: "", status: "offline",
+              verification_status: "Pending Verification", skills: "", rating: 0, completed_jobs_count: 0, earnings: 0, latitude: "", longitude: ""
+            });
             setEditingAgentId(null);
             setShowAgentForm(true);
           }}>
@@ -2224,6 +2331,38 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
                     <option value="offline">Offline</option>
                   </select>
                 </label>
+                <label>
+                  Verification Status
+                  <select value={agentForm.verification_status} onChange={(e) => setAgentForm({ ...agentForm, verification_status: e.target.value })}>
+                    <option value="Pending Verification">Pending Verification</option>
+                    <option value="Verified">Verified</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </label>
+                <label>
+                  Skills (comma separated)
+                  <input value={agentForm.skills} onChange={(e) => setAgentForm({ ...agentForm, skills: e.target.value })} placeholder="Plumbing, Cleaning" />
+                </label>
+                <label>
+                  Rating (e.g. 4.8)
+                  <input type="number" step="0.1" max="5" value={agentForm.rating} onChange={(e) => setAgentForm({ ...agentForm, rating: e.target.value })} />
+                </label>
+                <label>
+                  Completed Jobs
+                  <input type="number" value={agentForm.completed_jobs_count} onChange={(e) => setAgentForm({ ...agentForm, completed_jobs_count: e.target.value })} />
+                </label>
+                <label>
+                  Total Earnings (INR)
+                  <input type="number" value={agentForm.earnings} onChange={(e) => setAgentForm({ ...agentForm, earnings: e.target.value })} />
+                </label>
+                <label>
+                  Location (Latitude)
+                  <input type="text" value={agentForm.latitude} onChange={(e) => setAgentForm({ ...agentForm, latitude: e.target.value })} placeholder="e.g. 12.9716" />
+                </label>
+                <label>
+                  Location (Longitude)
+                  <input type="text" value={agentForm.longitude} onChange={(e) => setAgentForm({ ...agentForm, longitude: e.target.value })} placeholder="e.g. 77.5946" />
+                </label>
               </div>
               <div className="admin-form-actions" style={{ marginTop: '20px' }}>
                 <button type="button" className="btn btn-ghost" onClick={() => setShowAgentForm(false)}>Cancel</button>
@@ -2235,41 +2374,137 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
           </div>
         )}
 
+        <div className="admin-toolbar" style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <select 
+            value={agentStatusFilter} 
+            onChange={(e) => setAgentStatusFilter(e.target.value)}
+            className="brave-input"
+            style={{ width: '160px', padding: '8px' }}
+          >
+            <option value="All">All Statuses</option>
+            <option value="online">Online</option>
+            <option value="working">Working</option>
+            <option value="offline">Offline</option>
+          </select>
+
+          <select 
+            value={agentVerificationFilter} 
+            onChange={(e) => setAgentVerificationFilter(e.target.value)}
+            className="brave-input"
+            style={{ width: '180px', padding: '8px' }}
+          >
+            <option value="All">All Verifications</option>
+            <option value="Pending Verification">Pending</option>
+            <option value="Verified">Verified</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+
+          <div style={{ flex: 1 }}></div>
+
+          {selectedAgentIds.length > 0 && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'var(--card-bg-alt)', padding: '6px 12px', borderRadius: '8px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{selectedAgentIds.length} selected</span>
+              <select className="brave-input" style={{ width: '140px', padding: '6px' }} onChange={(e) => {
+                if (e.target.value) {
+                  handleBulkAction(e.target.value);
+                  e.target.value = ""; // Reset
+                }
+              }}>
+                <option value="">Bulk Actions...</option>
+                <option value="activate">Set Online</option>
+                <option value="deactivate">Set Offline</option>
+                <option value="verify">Mark Verified</option>
+                <option value="reject">Mark Rejected</option>
+              </select>
+            </div>
+          )}
+        </div>
+
         <div className="admin-table-wrapper">
           <table className="admin-datatable">
             <thead>
               <tr>
-                <th>Photo</th>
-                <th>Name</th>
-                <th>Phone</th>
+                <th style={{ width: '40px', textAlign: 'center' }}>
+                  <input 
+                    type="checkbox" 
+                    onChange={toggleAllAgents} 
+                    checked={filteredAgents.length > 0 && selectedAgentIds.length === filteredAgents.length} 
+                  />
+                </th>
+                <th>Agent</th>
+                <th>Verification</th>
                 <th>Status</th>
+                <th>Skills & Stats</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {agentsList.length ? (
-                agentsList.map((agent) => {
+              {filteredAgents.length ? (
+                filteredAgents.map((agent) => {
                   let statusColor = "var(--danger)";
                   if (agent.status === "online") statusColor = "var(--success)";
                   if (agent.status === "working") statusColor = "var(--info)";
+                  
+                  let verifyColor = "var(--warning)";
+                  if (agent.verification_status === "Verified") verifyColor = "var(--success)";
+                  if (agent.verification_status === "Rejected") verifyColor = "var(--danger)";
+
+                  const agentId = agent._id || agent.id;
 
                   return (
-                    <tr key={agent._id || agent.id}>
-                      <td>
-                        {agent.photo ? (
-                          <img src={agent.photo} alt={agent.name} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
-                        ) : (
-                          <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <UserCheck size={20} color="var(--muted)" />
-                          </div>
-                        )}
+                    <tr key={agentId} className={selectedAgentIds.includes(agentId) ? "selected-row" : ""}>
+                      <td style={{ textAlign: 'center' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedAgentIds.includes(agentId)}
+                          onChange={() => toggleAgentSelection(agentId)}
+                        />
                       </td>
-                      <td><strong>{agent.name}</strong></td>
-                      <td>{agent.phone || <span className="text-muted">N/A</span>}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          {agent.photo ? (
+                            <img src={agent.photo} alt={agent.name} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+                          ) : (
+                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <UserCheck size={20} color="var(--muted)" />
+                            </div>
+                          )}
+                          <div>
+                            <strong>{agent.name}</strong>
+                            <div style={{ fontSize: '12px', color: 'var(--muted)' }}>{agent.phone || "No phone"}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span style={{ 
+                          fontSize: '12px', fontWeight: 'bold', padding: '4px 8px', borderRadius: '12px', 
+                          background: `color-mix(in srgb, ${verifyColor} 15%, transparent)`, color: verifyColor 
+                        }}>
+                          {agent.verification_status || "Pending"}
+                        </span>
+                      </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: statusColor, display: 'inline-block' }}></span>
-                          <span style={{ textTransform: 'capitalize' }}>{agent.status}</span>
+                          <span style={{ textTransform: 'capitalize', fontSize: '14px' }}>{agent.status}</span>
+                        </div>
+                        {(agent.latitude && agent.longitude) && (
+                           <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>
+                             <MapPin size={10} /> {agent.latitude}, {agent.longitude}
+                           </div>
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '4px' }}>
+                          <Star size={12} color="#f59e0b" style={{ verticalAlign: 'text-bottom' }} /> {agent.rating || '0.0'} ({agent.completed_jobs_count || 0} jobs) • {formatMoney(agent.earnings || 0)}
+                        </div>
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                          {(Array.isArray(agent.skills) ? agent.skills : []).slice(0, 3).map(skill => (
+                            <span key={skill} style={{ background: 'var(--bg-secondary)', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>{skill}</span>
+                          ))}
+                          {Array.isArray(agent.skills) && agent.skills.length > 3 && (
+                            <span style={{ background: 'var(--bg-secondary)', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>+{agent.skills.length - 3}</span>
+                          )}
                         </div>
                       </td>
                       <td>
@@ -2277,7 +2512,7 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
                           <button type="button" className="btn btn-ghost btn-small" onClick={() => editAgent(agent)}>
                             <Edit3 size={14} /> Edit
                           </button>
-                          <button type="button" className="btn btn-ghost btn-small text-danger" onClick={() => handleDeleteAgent(agent._id || agent.id)} disabled={deletingAgentId === (agent._id || agent.id)}>
+                          <button type="button" className="btn btn-ghost btn-small text-danger" onClick={() => handleDeleteAgent(agentId)} disabled={deletingAgentId === agentId}>
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -2287,8 +2522,95 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
                 })
               ) : (
                 <tr>
+                  <td colSpan="6" style={{ textAlign: "center", padding: "32px" }}>
+                    <p className="text-muted">No agents match your criteria.</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAuditLogs = () => {
+    const filteredLogs = auditLogsList.filter(log => {
+      if (globalSearch) {
+        const search = globalSearch.toLowerCase();
+        return (log.admin_id && log.admin_id.toLowerCase().includes(search)) ||
+               (log.action && log.action.toLowerCase().includes(search)) ||
+               (log.target_id && log.target_id.toLowerCase().includes(search));
+      }
+      return true;
+    });
+
+    return (
+      <div className="admin-users-tab animated-fade-in">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div>
+            <h2>Audit Logs</h2>
+            <p className="text-muted">Track administrative actions and system modifications.</p>
+          </div>
+        </div>
+
+        <div className="admin-table-wrapper">
+          <table className="admin-datatable">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Admin ID</th>
+                <th>Action</th>
+                <th>Target ID</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredLogs.length ? (
+                filteredLogs.map((log) => (
+                  <tr key={log.id || log._id}>
+                    <td>
+                      <div style={{ fontSize: '12px' }}>
+                        {new Date(log.created_at).toLocaleString()}
+                      </div>
+                    </td>
+                    <td>
+                      <strong>{log.admin_id || "System"}</strong>
+                    </td>
+                    <td>
+                      <span style={{ 
+                        padding: '4px 8px', borderRadius: '4px', fontSize: '12px',
+                        background: 'var(--bg-secondary)', fontWeight: 'bold'
+                      }}>
+                        {log.action}
+                      </span>
+                    </td>
+                    <td>
+                      {log.target_id ? (
+                        <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>{log.target_id}</span>
+                      ) : (
+                        <span className="text-muted">-</span>
+                      )}
+                    </td>
+                    <td>
+                      {log.details ? (
+                        <pre style={{ 
+                          margin: 0, padding: '8px', background: 'var(--card-bg-alt)', 
+                          borderRadius: '4px', fontSize: '11px', maxWidth: '300px', 
+                          overflowX: 'auto', whiteSpace: 'pre-wrap' 
+                        }}>
+                          {typeof log.details === 'object' ? JSON.stringify(log.details, null, 2) : log.details}
+                        </pre>
+                      ) : (
+                        <span className="text-muted">None</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
                   <td colSpan="5" style={{ textAlign: "center", padding: "32px" }}>
-                    <p className="text-muted">No agents found.</p>
+                    <p className="text-muted">No audit logs found.</p>
                   </td>
                 </tr>
               )}
@@ -2611,6 +2933,10 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
               <UserCheck size={16} />
               <span>Agents</span>
             </button>
+            <button className={activeTab === "audit" ? "active" : ""} onClick={() => setActiveTab("audit")}>
+              <History size={16} />
+              <span>Audit Logs</span>
+            </button>
             <button className={activeTab === "support" ? "active" : ""} onClick={() => setActiveTab("support")}>
               <MessageCircle size={16} />
               <span>Support Inbox</span>
@@ -2660,6 +2986,64 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
                 />
               </label>
             )}
+            <div style={{ position: 'relative', marginRight: '15px', display: 'flex', alignItems: 'center' }}>
+              <button 
+                className="btn btn-ghost" 
+                style={{ position: 'relative', padding: '8px' }}
+                onClick={() => setShowNotifications(!showNotifications)}
+              >
+                <Bell size={20} />
+                {alertsList.filter(a => !a.is_read).length > 0 && (
+                  <span style={{
+                    position: 'absolute', top: '2px', right: '2px', 
+                    background: 'var(--danger)', color: 'white', 
+                    fontSize: '10px', width: '16px', height: '16px', 
+                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {alertsList.filter(a => !a.is_read).length}
+                  </span>
+                )}
+              </button>
+              
+              {showNotifications && (
+                <div style={{
+                  position: 'absolute', top: '100%', right: '0', marginTop: '8px',
+                  width: '320px', background: 'var(--card-bg)', border: '1px solid var(--border)',
+                  borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 100,
+                  maxHeight: '400px', overflowY: 'auto'
+                }}>
+                  <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px' }}>Notifications</h3>
+                  </div>
+                  <div style={{ padding: '8px' }}>
+                    {alertsList.length === 0 ? (
+                      <div style={{ padding: '24px', textAlign: 'center', color: 'var(--muted)' }}>No notifications</div>
+                    ) : (
+                      alertsList.map(alert => (
+                        <div key={alert.id || alert._id} style={{ 
+                          padding: '12px', borderBottom: '1px solid var(--border-light)', 
+                          background: alert.is_read ? 'transparent' : 'var(--bg-secondary)',
+                          borderRadius: '8px', marginBottom: '4px', cursor: 'pointer'
+                        }} onClick={async () => {
+                          if (!alert.is_read) {
+                            try {
+                              await api.markAlertRead(alert.id || alert._id);
+                              setAlertsList(prev => prev.map(a => (a.id === alert.id || a._id === alert._id) ? { ...a, is_read: true } : a));
+                            } catch (e) {
+                              toast.error("Failed to mark read");
+                            }
+                          }
+                        }}>
+                          <div style={{ fontSize: '14px', fontWeight: alert.is_read ? 'normal' : 'bold', color: 'var(--text-main)' }}>{alert.title}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>{alert.message}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--muted-light)', marginTop: '8px' }}>{new Date(alert.created_at).toLocaleString()}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="workspace-header-actions">
               {activeTab === "services" && (
                 <button className="btn btn-primary btn-add-service" onClick={() => setShowForm((value) => !value)}>
@@ -2787,6 +3171,7 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
             {activeTab === "beauty" && renderBeauty()}
             {activeTab === "users" && renderUsers()}
             {activeTab === "agents" && renderAgents()}
+            {activeTab === "audit" && renderAuditLogs()}
             {activeTab === "support" && renderSupport()}
             {activeTab === "whatsapp" && <WhatsAppManager />}
             {activeTab === "database" && currentUser?.role === "owner" && <DatabaseManager />}

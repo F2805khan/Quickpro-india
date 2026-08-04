@@ -183,7 +183,12 @@ export const api = {
     request("/admin/agents", { method: "POST", body: JSON.stringify(payload) }),
   updateAgent: (id, payload) =>
     request(`/admin/agents/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) }),
+  bulkUpdateAgents: (payload) =>
+    request("/admin/agents/bulk", { method: "PUT", body: JSON.stringify(payload) }),
   deleteAgent: (id) => request(`/admin/agents/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  getAdminAlerts: () => request("/admin/alerts"),
+  markAlertRead: (id) => request(`/admin/alerts/${encodeURIComponent(id)}/read`, { method: "PUT" }),
+  getAuditLogs: () => request("/admin/audit-logs"),
   createBooking: (payload) =>
     request("/bookings", { method: "POST", body: JSON.stringify(payload) }),
   applyCoupon: (payload) =>

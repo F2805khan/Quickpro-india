@@ -1,4 +1,5 @@
-import { Agent } from "../models/index.js";
+import { Agent, AdminAlert } from "../models/index.js";
+import { logAuditAction } from "../utils/auditLogger.js";
 
 // GET /api/admin/agents
 export const getAgents = async (req, res) => {
@@ -14,7 +15,7 @@ export const getAgents = async (req, res) => {
 // POST /api/admin/agents
 export const createAgent = async (req, res) => {
   try {
-    const { name, phone, photo, status } = req.body;
+    const { name, phone, photo, status, verification_status, skills, rating, completed_jobs_count, earnings, latitude, longitude } = req.body;
     
     if (!name) {
       return res.status(400).json({ message: "Name is required" });
@@ -24,11 +25,52 @@ export const createAgent = async (req, res) => {
       name,
       phone: phone || "",
       status: status || "offline",
+      verification_status: verification_status || "Pending Verification",
+      skills: skills || [],
+      rating: rating || 0,
+      completed_jobs_count: completed_jobs_count || 0,
+      earnings: earnings || 0,
+      latitude: latitude || null,
+      longitude: longitude || null
     });
+
+    if (agent) {
+      await logAuditAction("CREATE", "Agent", agent.id || agent._id, req.user || { email: "admin@system.local" }, { name: agent.name });
+      
+      if (agent.verification_status === "Pending Verification") {
+        await AdminAlert.create({
+          type: "AGENT_SIGNUP",
+          title: "New Agent Signed Up",
+          message: `Agent ${agent.name} is waiting for verification.`,
+          is_read: false
+        });
+      }
+    }
 
     res.status(201).json(agent);
   } catch (error) {
     console.error("Error creating agent:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// PUT /api/admin/agents/bulk
+export const bulkUpdateAgents = async (req, res) => {
+  try {
+    const { ids, updates } = req.body;
+    
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: "No agent IDs provided" });
+    }
+
+    const promises = ids.map(id => Agent.update(id, updates));
+    await Promise.all(promises);
+
+    await logAuditAction("BULK_UPDATE", "Agent", "multiple", req.user || { email: "admin@system.local" }, { ids, updates });
+
+    res.json({ message: "Agents updated successfully" });
+  } catch (error) {
+    console.error("Error bulk updating agents:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -39,7 +81,6 @@ export const updateAgent = async (req, res) => {
     const agentId = req.params.id;
     const updates = req.body;
     
-    // Prevent overriding the ID and remove unmapped columns
     delete updates._id;
     delete updates.id;
     delete updates.photo;
@@ -49,6 +90,8 @@ export const updateAgent = async (req, res) => {
     if (!agent) {
       return res.status(404).json({ message: "Agent not found" });
     }
+    
+    await logAuditAction("UPDATE", "Agent", agentId, req.user || { email: "admin@system.local" }, updates);
     
     res.json(agent);
   } catch (error) {
@@ -66,6 +109,8 @@ export const deleteAgent = async (req, res) => {
     if (!success) {
       return res.status(404).json({ message: "Agent not found" });
     }
+    
+    await logAuditAction("DELETE", "Agent", agentId, req.user || { email: "admin@system.local" });
     
     res.json({ message: "Agent deleted successfully" });
   } catch (error) {
