@@ -5,7 +5,17 @@ import { logAuditAction } from "../utils/auditLogger.js";
 export const getAgents = async (req, res) => {
   try {
     const agents = await Agent.findAll();
-    res.json(agents);
+    const mappedAgents = agents.map(a => {
+      const data = a.toJSON ? a.toJSON() : a;
+      return {
+        ...data,
+        photo: data.photoUrl,
+        status: data.enabled ? "online" : "offline",
+        verification_status: data.isVerified ? "Verified" : "Pending Verification",
+        skills: data.serviceCategory ? data.serviceCategory.split(",").map(s => s.trim()) : []
+      };
+    });
+    res.json(mappedAgents);
   } catch (error) {
     console.error("Error fetching agents:", error);
     res.status(500).json({ message: "Server error" });
@@ -15,7 +25,7 @@ export const getAgents = async (req, res) => {
 // POST /api/admin/agents
 export const createAgent = async (req, res) => {
   try {
-    const { name, phone, photo, status, verification_status, skills, rating, completed_jobs_count, earnings, latitude, longitude } = req.body;
+    const { name, phone, photo, status, verification_status, skills } = req.body;
     
     if (!name) {
       return res.status(400).json({ message: "Name is required" });
@@ -24,15 +34,10 @@ export const createAgent = async (req, res) => {
     const newAgentData = {
       name,
       ...(phone !== undefined && { phone }),
-      ...(photo !== undefined && { photo_url: photo }),
-      ...(status !== undefined && { status }),
-      ...(verification_status !== undefined && { verification_status }),
-      ...(skills !== undefined && { skills }),
-      ...(rating !== undefined && { rating }),
-      ...(completed_jobs_count !== undefined && { completed_jobs_count }),
-      ...(earnings !== undefined && { earnings }),
-      ...(latitude !== undefined && { latitude }),
-      ...(longitude !== undefined && { longitude })
+      ...(photo !== undefined && { photoUrl: photo }),
+      ...(status !== undefined && { enabled: status === "online" || status === "working" }),
+      ...(verification_status !== undefined && { isVerified: verification_status === "Verified" }),
+      ...(skills !== undefined && { serviceCategory: Array.isArray(skills) ? skills.join(", ") : String(skills) })
     };
 
     const agent = await Agent.create(newAgentData);
@@ -40,7 +45,7 @@ export const createAgent = async (req, res) => {
     if (agent) {
       await logAuditAction("CREATE", "Agent", agent.id || agent._id, req.user || { email: "admin@system.local" }, { name: agent.name });
       
-      if (agent.verification_status === "Pending Verification") {
+      if (verification_status === "Pending Verification") {
         try {
           await AdminAlert.create({
             type: "AGENT_SIGNUP",
@@ -89,24 +94,32 @@ export const bulkUpdateAgents = async (req, res) => {
 export const updateAgent = async (req, res) => {
   try {
     const agentId = req.params.id;
-    const updates = req.body;
+    const { name, phone, photo, status, verification_status, skills } = req.body;
     
-    delete updates._id;
-    delete updates.id;
-    delete updates.photo;
+    const dbUpdates = {
+      ...(name !== undefined && { name }),
+      ...(phone !== undefined && { phone }),
+      ...(photo !== undefined && { photoUrl: photo }),
+      ...(status !== undefined && { enabled: status === "online" || status === "working" }),
+      ...(verification_status !== undefined && { isVerified: verification_status === "Verified" }),
+      ...(skills !== undefined && { serviceCategory: Array.isArray(skills) ? skills.join(", ") : String(skills) })
+    };
 
-    const agent = await Agent.update(agentId, updates);
+    const agent = await Agent.update(agentId, dbUpdates);
     
     if (!agent) {
       return res.status(404).json({ message: "Agent not found" });
     }
     
-    await logAuditAction("UPDATE", "Agent", agentId, req.user || { email: "admin@system.local" }, updates);
+    await logAuditAction("UPDATE", "Agent", agentId, req.user || { email: "admin@system.local" }, dbUpdates);
     
     res.json(agent);
   } catch (error) {
     console.error("Error updating agent:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ 
+      message: error.message || "Server error",
+      details: error.details || error
+    });
   }
 };
 
