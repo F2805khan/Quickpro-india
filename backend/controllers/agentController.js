@@ -21,18 +21,21 @@ export const createAgent = async (req, res) => {
       return res.status(400).json({ message: "Name is required" });
     }
 
-    const agent = await Agent.create({
+    const newAgentData = {
       name,
-      phone: phone || "",
-      status: status || "offline",
-      verification_status: verification_status || "Pending Verification",
-      skills: skills || [],
-      rating: rating || 0,
-      completed_jobs_count: completed_jobs_count || 0,
-      earnings: earnings || 0,
-      latitude: latitude || null,
-      longitude: longitude || null
-    });
+      ...(phone !== undefined && { phone }),
+      ...(photo !== undefined && { photo }),
+      ...(status !== undefined && { status }),
+      ...(verification_status !== undefined && { verification_status }),
+      ...(skills !== undefined && { skills }),
+      ...(rating !== undefined && { rating }),
+      ...(completed_jobs_count !== undefined && { completed_jobs_count }),
+      ...(earnings !== undefined && { earnings }),
+      ...(latitude !== undefined && { latitude }),
+      ...(longitude !== undefined && { longitude })
+    };
+
+    const agent = await Agent.create(newAgentData);
 
     if (agent) {
       await logAuditAction("CREATE", "Agent", agent.id || agent._id, req.user || { email: "admin@system.local" }, { name: agent.name });
@@ -54,7 +57,10 @@ export const createAgent = async (req, res) => {
     res.status(201).json(agent);
   } catch (error) {
     console.error("Error creating agent:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ 
+      message: error.message || "Server error",
+      details: error.details || error
+    });
   }
 };
 
