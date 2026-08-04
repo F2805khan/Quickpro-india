@@ -38,12 +38,16 @@ export const createAgent = async (req, res) => {
       await logAuditAction("CREATE", "Agent", agent.id || agent._id, req.user || { email: "admin@system.local" }, { name: agent.name });
       
       if (agent.verification_status === "Pending Verification") {
-        await AdminAlert.create({
-          type: "AGENT_SIGNUP",
-          title: "New Agent Signed Up",
-          message: `Agent ${agent.name} is waiting for verification.`,
-          is_read: false
-        });
+        try {
+          await AdminAlert.create({
+            type: "AGENT_SIGNUP",
+            title: "New Agent Signed Up",
+            message: `Agent ${agent.name} is waiting for verification.`,
+            is_read: false
+          });
+        } catch (alertError) {
+          console.error("Failed to create admin alert:", alertError);
+        }
       }
     }
 
