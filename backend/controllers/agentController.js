@@ -24,7 +24,7 @@ export const createAgent = async (req, res) => {
     const newAgentData = {
       name,
       ...(phone !== undefined && { phone }),
-      ...(photo !== undefined && { photo }),
+      ...(photo !== undefined && { photo_url: photo }),
       ...(status !== undefined && { status }),
       ...(verification_status !== undefined && { verification_status }),
       ...(skills !== undefined && { skills }),
