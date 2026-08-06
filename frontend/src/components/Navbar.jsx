@@ -38,11 +38,10 @@ function Navbar({ user, onLogout }) {
     <header className="navbar-shell">
       <nav className="navbar container">
         <Link to="/" className="brand" onClick={closeMenus}>
-          <span className="brand-icon">
-            <img src="/images/site/logo.png" alt="" />
+          <span className="brand-logo" style={{ display: 'flex', alignItems: 'center' }}>
+            <img src="/images/site/logo.png" alt="Quickpro India" style={{ height: '34px', objectFit: 'contain' }} />
           </span>
           <span>
-            <strong>fixOindia</strong>
             <small>All Services. One Click.</small>
           </span>
         </Link>

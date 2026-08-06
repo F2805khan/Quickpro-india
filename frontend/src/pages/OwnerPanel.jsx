@@ -84,10 +84,11 @@ function OwnerPanel() {
   return (
     <main className="owner-shell">
       <header className="owner-topbar shell">
-        <div className="owner-brand">
-          <span><LayoutDashboard size={17} /></span>
+        <div className="owner-brand" style={{ gap: '10px' }}>
+          <span className="brand-logo" style={{ display: 'flex', alignItems: 'center' }}>
+            <img src="/images/site/logo.png" alt="Quickpro India" style={{ height: '34px', objectFit: 'contain' }} />
+          </span>
           <div>
-            <strong>fixOindia Control</strong>
             <small>Operations dashboard</small>
           </div>
         </div>

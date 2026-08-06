@@ -327,7 +327,7 @@ function SplashScreen({ onFinished }) {
 }
 
 function Logo() {
-  return <Link className="brand" to="/"><span className="brand-mark"><img src="/images/site/logo.png" alt="" /></span><span>fixOindia</span></Link>;
+  return <Link className="brand" to="/"><span className="brand-logo" style={{ display: 'flex', alignItems: 'center' }}><img src="/images/site/logo.png" alt="Quickpro India" style={{ height: '34px', objectFit: 'contain' }} /></span></Link>;
 }
 
 function Navbar({ cartCount = 0 }) {

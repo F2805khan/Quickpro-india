@@ -50,7 +50,9 @@ function AdminAccessGate({ onAuthSuccess }) {
           <span className="badge">
             <ShieldCheck size={15} /> Control access
           </span>
-          <h1>fixOindia Control</h1>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
+            <img src="/images/site/logo.png" alt="Quickpro India Control" style={{ height: '40px', objectFit: 'contain' }} />
+          </div>
           <p>Sign in with your panel or owner ID to manage services, bookings, payments, and users.</p>
         </div>
 
