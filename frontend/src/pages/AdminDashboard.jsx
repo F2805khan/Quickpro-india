@@ -279,7 +279,7 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
   const [selectedAgentIds, setSelectedAgentIds] = useState([]);
   const [agentForm, setAgentForm] = useState({ 
     name: "", phone: "", photo: "", status: "offline", 
-    verification_status: "Pending Verification", skills: "", rating: 0, completed_jobs_count: 0, earnings: 0, latitude: "", longitude: "" 
+    verification_status: "Pending Verification", documentation_url: "", kyc_required: false, skills: "", rating: 0, completed_jobs_count: 0, earnings: 0, latitude: "", longitude: "" 
   });
   const [showAgentForm, setShowAgentForm] = useState(false);
   const [editingAgentId, setEditingAgentId] = useState(null);
@@ -2228,6 +2228,8 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
         photo: agent.photo || "",
         status: agent.status || "offline",
         verification_status: agent.verification_status || "Pending Verification",
+        documentation_url: agent.documentation_url || "",
+        kyc_required: agent.kyc_required || false,
         skills: Array.isArray(agent.skills) ? agent.skills.join(", ") : (agent.skills || ""),
         rating: agent.rating || 0,
         completed_jobs_count: agent.completed_jobs_count || 0,
@@ -2295,7 +2297,7 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
           <button className="btn btn-primary" onClick={() => {
             setAgentForm({ 
               name: "", phone: "", photo: "", status: "offline",
-              verification_status: "Pending Verification", skills: "", rating: 0, completed_jobs_count: 0, earnings: 0, latitude: "", longitude: ""
+              verification_status: "Pending Verification", documentation_url: "", kyc_required: false, skills: "", rating: 0, completed_jobs_count: 0, earnings: 0, latitude: "", longitude: ""
             });
             setEditingAgentId(null);
             setShowAgentForm(true);
@@ -2338,6 +2340,14 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
                     <option value="Verified">Verified</option>
                     <option value="Rejected">Rejected</option>
                   </select>
+                </label>
+                <label>
+                  Documentation URL
+                  <input value={agentForm.documentation_url || ""} onChange={(e) => setAgentForm({ ...agentForm, documentation_url: e.target.value })} placeholder="https://link-to-id..." />
+                </label>
+                <label className="admin-toggle-field" style={{ alignSelf: 'center', marginTop: '14px' }}>
+                  <span>KYC Required</span>
+                  <input type="checkbox" checked={agentForm.kyc_required || false} onChange={(e) => setAgentForm({ ...agentForm, kyc_required: e.target.checked })} />
                 </label>
                 <label>
                   Skills (comma separated)

@@ -9,10 +9,8 @@ export const getAgents = async (req, res) => {
       const data = a.toJSON ? a.toJSON() : a;
       return {
         ...data,
-        photo: data.photoUrl,
-        status: data.enabled ? "online" : "offline",
-        verification_status: data.isVerified ? "Verified" : "Pending Verification",
-        skills: data.serviceCategory ? data.serviceCategory.split(",").map(s => s.trim()) : []
+        photo: data.photo || data.photoUrl,
+        skills: Array.isArray(data.skills) ? data.skills : (data.serviceCategory ? data.serviceCategory.split(",").map(s => s.trim()) : [])
       };
     });
     res.json(mappedAgents);
@@ -25,7 +23,10 @@ export const getAgents = async (req, res) => {
 // POST /api/admin/agents
 export const createAgent = async (req, res) => {
   try {
-    const { name, phone, photo, status, verification_status, skills } = req.body;
+    const { 
+      name, phone, photo, status, verification_status, skills, 
+      documentation_url, kyc_required, rating, completed_jobs_count, earnings, latitude, longitude 
+    } = req.body;
     
     if (!name) {
       return res.status(400).json({ message: "Name is required" });
@@ -34,10 +35,17 @@ export const createAgent = async (req, res) => {
     const newAgentData = {
       name,
       ...(phone !== undefined && { phone }),
-      ...(photo !== undefined && { photoUrl: photo }),
-      ...(status !== undefined && { enabled: status === "online" || status === "working" }),
-      ...(verification_status !== undefined && { isVerified: verification_status === "Verified" }),
-      ...(skills !== undefined && { serviceCategory: Array.isArray(skills) ? skills.join(", ") : String(skills) })
+      ...(photo !== undefined && { photo }),
+      ...(status !== undefined && { status }),
+      ...(verification_status !== undefined && { verification_status }),
+      ...(documentation_url !== undefined && { documentation_url }),
+      ...(kyc_required !== undefined && { kyc_required }),
+      ...(rating !== undefined && { rating }),
+      ...(completed_jobs_count !== undefined && { completed_jobs_count }),
+      ...(earnings !== undefined && { earnings }),
+      ...(latitude !== undefined && { latitude }),
+      ...(longitude !== undefined && { longitude }),
+      ...(skills !== undefined && { skills: Array.isArray(skills) ? skills.join(", ") : String(skills) })
     };
 
     const agent = await Agent.create(newAgentData);
@@ -94,15 +102,25 @@ export const bulkUpdateAgents = async (req, res) => {
 export const updateAgent = async (req, res) => {
   try {
     const agentId = req.params.id;
-    const { name, phone, photo, status, verification_status, skills } = req.body;
+    const { 
+      name, phone, photo, status, verification_status, skills,
+      documentation_url, kyc_required, rating, completed_jobs_count, earnings, latitude, longitude
+    } = req.body;
     
     const dbUpdates = {
       ...(name !== undefined && { name }),
       ...(phone !== undefined && { phone }),
-      ...(photo !== undefined && { photoUrl: photo }),
-      ...(status !== undefined && { enabled: status === "online" || status === "working" }),
-      ...(verification_status !== undefined && { isVerified: verification_status === "Verified" }),
-      ...(skills !== undefined && { serviceCategory: Array.isArray(skills) ? skills.join(", ") : String(skills) })
+      ...(photo !== undefined && { photo }),
+      ...(status !== undefined && { status }),
+      ...(verification_status !== undefined && { verification_status }),
+      ...(documentation_url !== undefined && { documentation_url }),
+      ...(kyc_required !== undefined && { kyc_required }),
+      ...(rating !== undefined && { rating }),
+      ...(completed_jobs_count !== undefined && { completed_jobs_count }),
+      ...(earnings !== undefined && { earnings }),
+      ...(latitude !== undefined && { latitude }),
+      ...(longitude !== undefined && { longitude }),
+      ...(skills !== undefined && { skills: Array.isArray(skills) ? skills.join(", ") : String(skills) })
     };
 
     const agent = await Agent.update(agentId, dbUpdates);

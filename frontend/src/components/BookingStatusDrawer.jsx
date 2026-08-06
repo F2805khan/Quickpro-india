@@ -39,11 +39,19 @@ function BookingStatusDrawer({ booking, liveMode = false, onCancel, onClose }) {
     let stepIndex = startIndex >= 0 ? startIndex : 0;
 
     const advance = setInterval(() => {
-      stepIndex += 1;
-      if (stepIndex >= LIVE_SIMULATION_STEPS.length) {
+      const nextStepIndex = stepIndex + 1;
+      if (nextStepIndex >= LIVE_SIMULATION_STEPS.length) {
         clearInterval(advance);
         return;
       }
+
+      const nextStep = LIVE_SIMULATION_STEPS[nextStepIndex];
+      // Do not advance past Confirmed if agent is not assigned
+      if (nextStep === "Professional Assigned" && !booking?.professionalName) {
+        return;
+      }
+
+      stepIndex += 1;
       setDisplayStatus(LIVE_SIMULATION_STEPS[stepIndex]);
       setEtaMinutes((current) => Math.max(6, current - 5));
     }, 3200);
