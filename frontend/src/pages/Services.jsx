@@ -36,11 +36,16 @@ const categoryIcons = {
 function Services({ services = defaultServices, searchableServices = services, onBookService }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeCategory, setActiveCategory] = useState("All Services");
+  const [activeSubcategory, setActiveSubcategory] = useState("All");
   const [search, setSearch] = useState(searchParams.get("q") || "");
 
   useEffect(() => {
     setSearch(searchParams.get("q") || "");
   }, [searchParams]);
+
+  useEffect(() => {
+    setActiveSubcategory("All");
+  }, [activeCategory]);
 
   const categoryList = useMemo(() => {
     const serviceCategories = services.map((service) => service.category).filter(Boolean);
@@ -53,9 +58,19 @@ function Services({ services = defaultServices, searchableServices = services, o
     return servicePool.filter((service) => {
       const categoryMatch =
         activeCategory === "All Services" || service.category === activeCategory;
-      return categoryMatch && matchServiceQuery(service, search);
+      const subcategoryMatch = 
+        activeSubcategory === "All" || service.subcategory === activeSubcategory;
+      return categoryMatch && subcategoryMatch && matchServiceQuery(service, search);
     });
-  }, [activeCategory, search, servicePool]);
+  }, [activeCategory, activeSubcategory, search, servicePool]);
+
+  const subcategories = useMemo(() => {
+    if (activeCategory === "All Services") return [];
+    const subs = servicePool
+      .filter((s) => s.category === activeCategory && s.subcategory)
+      .map((s) => s.subcategory);
+    return Array.from(new Set(subs));
+  }, [activeCategory, servicePool]);
 
   return (
     <section className="page-shell">
@@ -105,21 +120,44 @@ function Services({ services = defaultServices, searchableServices = services, o
             })}
           </aside>
 
-          <div className="service-grid">
-            {filteredServices.length ? (
-              filteredServices.map((service) => (
-                <ServiceCard
-                  key={service.id || service._id}
-                  service={service}
-                  onBookService={onBookService}
-                />
-              ))
-            ) : (
-              <div className="services-empty-search">
-                <h3>No services found for "{search}"</h3>
-                <p>Try another keyword like cleaning, AC, electrician, or plumbing.</p>
+          <div className="service-grid-wrapper" style={{ flex: 1 }}>
+            {subcategories.length > 0 && (
+              <div style={{ display: "flex", gap: "10px", marginBottom: "20px", overflowX: "auto", paddingBottom: "10px" }}>
+                <button
+                  className={`btn ${activeSubcategory === "All" ? "btn-primary" : "btn-light"} btn-small`}
+                  onClick={() => setActiveSubcategory("All")}
+                  style={{ borderRadius: "20px" }}
+                >
+                  All
+                </button>
+                {subcategories.map(sub => (
+                  <button
+                    key={sub}
+                    className={`btn ${activeSubcategory === sub ? "btn-primary" : "btn-light"} btn-small`}
+                    onClick={() => setActiveSubcategory(sub)}
+                    style={{ borderRadius: "20px", whiteSpace: "nowrap" }}
+                  >
+                    {sub}
+                  </button>
+                ))}
               </div>
             )}
+            <div className="service-grid">
+              {filteredServices.length ? (
+                filteredServices.map((service) => (
+                  <ServiceCard
+                    key={service.id || service._id}
+                    service={service}
+                    onBookService={onBookService}
+                  />
+                ))
+              ) : (
+                <div className="services-empty-search">
+                  <h3>No services found for "{search}"</h3>
+                  <p>Try another keyword like cleaning, AC, electrician, or plumbing.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

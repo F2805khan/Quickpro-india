@@ -1,5 +1,6 @@
 import asyncHandler from "../middleware/asyncHandler.js";
 import { sendReviewConfirmationEmail, sendReviewNotificationEmail } from "../utils/email.js";
+import Review from "../models/Review.js";
 
 const clean = (value) => String(value ?? "").trim();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -76,4 +77,41 @@ export const sendReviewConfirmation = asyncHandler(async (req, res) => {
     emailSent,
     adminEmailSent
   });
+});
+
+// @desc    Create new review
+// @route   POST /api/reviews
+// @access  Public (should be Private in production)
+export const createReview = asyncHandler(async (req, res) => {
+  const { bookingId, userId, providerId, serviceId, rating, comment } = req.body;
+
+  if (!rating || rating < 1 || rating > 5) {
+    res.status(400);
+    throw new Error("Valid rating (1-5) is required");
+  }
+
+  const review = await Review.create({
+    bookingId,
+    userId,
+    providerId,
+    serviceId,
+    rating,
+    comment
+  });
+
+  res.status(201).json(review);
+});
+
+// @desc    Get reviews (optionally filter by providerId or serviceId)
+// @route   GET /api/reviews
+// @access  Public
+export const getReviews = asyncHandler(async (req, res) => {
+  const { providerId, serviceId } = req.query;
+  const where = {};
+
+  if (providerId) where.providerId = providerId;
+  if (serviceId) where.serviceId = serviceId;
+
+  const reviews = await Review.findAll({ where });
+  res.json(reviews);
 });

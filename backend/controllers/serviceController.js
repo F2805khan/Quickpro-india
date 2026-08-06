@@ -3,7 +3,7 @@ import asyncHandler from "../middleware/asyncHandler.js";
 import { supabase } from "../config/supabase.js";
 import Service from "../models/Service.js";
 
-const serviceFields = ["title", "description", "category", "price", "duration", "image", "rating", "region", "enabled"];
+const serviceFields = ["title", "description", "category", "subcategory", "isBundle", "price", "duration", "image", "rating", "region", "enabled"];
 
 const normalizeServicePayload = (body, { partial = false } = {}) => {
   const payload = {};
@@ -14,7 +14,7 @@ const normalizeServicePayload = (body, { partial = false } = {}) => {
     }
   }
 
-  for (const field of ["title", "description", "category", "duration", "image", "region"]) {
+  for (const field of ["title", "description", "category", "subcategory", "duration", "image", "region"]) {
     if (payload[field] !== undefined) {
       payload[field] = String(payload[field]).trim();
     }
@@ -70,7 +70,7 @@ export const getServiceCategories = asyncHandler(async (req, res) => {
 });
 
 export const getServices = asyncHandler(async (req, res) => {
-  const { search, category, region } = req.query;
+  const { search, category, subcategory, region, isBundle } = req.query;
   const where = {};
 
   if (search) {
@@ -79,6 +79,14 @@ export const getServices = asyncHandler(async (req, res) => {
 
   if (category && category !== "All Services" && category !== "More Services") {
     where.category = category;
+  }
+
+  if (subcategory) {
+    where.subcategory = subcategory;
+  }
+
+  if (isBundle !== undefined) {
+    where.isBundle = isBundle === "true";
   }
 
   if (region && region !== "All Regions") {

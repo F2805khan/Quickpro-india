@@ -9,6 +9,10 @@ import {
   PlayCircle, ScanLine, Scissors, ShieldCheck, ShoppingCart, Sparkles, Star, UserRound, UsersRound,
   WalletCards, WandSparkles, WashingMachine, Wind, Wrench, X, Zap, Car
 } from "lucide-react";
+import OwnerPanel from "./pages/OwnerPanel.jsx";
+import LiveTracking from "./pages/LiveTracking.jsx";
+import DigitalInvoice from "./pages/DigitalInvoice.jsx";
+import Memberships from "./pages/Memberships.jsx";
 import { api } from "./api/client.js";
 import { getUserProfile, onProfileChanged } from "./data/profileStore.js";
 import { saveUserBooking } from "./data/bookingStore.js";
@@ -23,6 +27,7 @@ const ProfileSkeletonCapture = lazy(() =>
 );
 const Services = lazy(() => import("./pages/Services.jsx"));
 const BookingStatus = lazy(() => import("./pages/BookingStatus.jsx"));
+const ProviderProfile = lazy(() => import("./pages/ProviderProfile.jsx"));
 
 const isPhoneLike = (value) => /^[+\d][\d\s-]{7,}$/.test(String(value || "").trim());
 
@@ -302,7 +307,7 @@ function SplashScreen({ onFinished }) {
       <div className="splash-content">
         <div className="splash-logo-wrap">
           <span className="splash-logo-mark">
-            <img src="/images/site/funservice-logo.svg" alt="" />
+            <img src="/images/site/logo.png" alt="" />
           </span>
           <h1 className="splash-brand-name">fixO<span>india</span></h1>
         </div>
@@ -322,7 +327,7 @@ function SplashScreen({ onFinished }) {
 }
 
 function Logo() {
-  return <Link className="brand" to="/"><span className="brand-mark"><img src="/images/site/funservice-logo.svg" alt="" /></span><span>fixOindia</span></Link>;
+  return <Link className="brand" to="/"><span className="brand-mark"><img src="/images/site/logo.png" alt="" /></span><span>fixOindia</span></Link>;
 }
 
 function Navbar({ cartCount = 0 }) {
@@ -612,8 +617,6 @@ function HomePage({ onBookService, services = fallbackServices.map(normalizeServ
   </main>;
 }
 
-// ServicesPage removed
-
 function BeautyPage() {
   const [playingReel, setPlayingReel] = useState(false);
   const [selectedSalonId, setSelectedSalonId] = useState(beautySalons[0].id);
@@ -750,7 +753,7 @@ function BookingPage({ cartItems = [], onUpdateCartQuantity, catalogServices = f
   const [quantity, setQuantity] = useState(cartItem?.quantity || 1);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [customer, setCustomer] = useState({ name: "", phone: "", address: "" });
+  const [customer, setCustomer] = useState({ name: "", phone: "", address: "", pincode: "" });
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [bookingTouched, setBookingTouched] = useState({});
@@ -854,6 +857,11 @@ function BookingPage({ cartItems = [], onUpdateCartQuantity, catalogServices = f
   };
 
   const continueFromSlot = () => {
+    if (!customer.pincode.trim() || customer.pincode.length < 6) {
+      setBookingSubmitted(true);
+      toast.error("Please enter a valid 6-digit Pincode to check availability.");
+      return;
+    }
     if (!customer.phone.trim()) {
       setBookingSubmitted(true);
       toast.error("Mobile number is required for direct booking.");
@@ -1021,7 +1029,7 @@ function BookingPage({ cartItems = [], onUpdateCartQuantity, catalogServices = f
       ) : (
         <>
           <div className="booking-steps">{["Slot", "Address", "Payment"].map((label, index) => <span className={step >= index + 1 ? "active" : ""} key={label}><b>{index + 1}</b>{label}</span>)}</div>
-          {step === 1 && <div className="booking-form"><span className="eyebrow">Step 01</span><h1>Choose a time that works.</h1><label><span>Mobile number</span><input required name="phone" value={customer.phone} onChange={updateCustomer} onBlur={() => setBookingTouched(curr => ({ ...curr, phone: true }))} placeholder="+91 98765 43210" className={(!customer.phone?.trim() && (bookingTouched.phone || bookingSubmitted)) ? "input-error" : ""} /></label><div className="calendar-card"><div className="calendar-head"><strong>Next 3 days</strong><span>Available slots</span></div><div className="date-row three-day-row">{bookingDays.map((day) => <button key={day.key} className={selectedDate === day.key ? "active" : ""} onClick={() => setSelectedDate(day.key)}><span>{day.weekday}</span><b>{day.day}</b></button>)}</div></div><div className="time-grid">{defaultSlotTimes.map((time) => <button className={selectedTime === time ? "active" : ""} key={time} onClick={() => setSelectedTime(time)}>{time}</button>)}</div><button className="btn btn-primary" onClick={continueFromSlot}>Continue to address <ArrowRight size={16} /></button></div>}
+          {step === 1 && <div className="booking-form"><span className="eyebrow">Step 01</span><h1>Check availability & choose a time.</h1><label><span>Service Pincode</span><input required name="pincode" value={customer.pincode} onChange={updateCustomer} onBlur={() => setBookingTouched(curr => ({ ...curr, pincode: true }))} placeholder="e.g. 400001" className={(!customer.pincode?.trim() && (bookingTouched.pincode || bookingSubmitted)) ? "input-error" : ""} /></label><label><span>Mobile number</span><input required name="phone" value={customer.phone} onChange={updateCustomer} onBlur={() => setBookingTouched(curr => ({ ...curr, phone: true }))} placeholder="+91 98765 43210" className={(!customer.phone?.trim() && (bookingTouched.phone || bookingSubmitted)) ? "input-error" : ""} /></label><div className="calendar-card"><div className="calendar-head"><strong>Next 3 days</strong><span>Available slots</span></div><div className="date-row three-day-row">{bookingDays.map((day) => <button key={day.key} className={selectedDate === day.key ? "active" : ""} onClick={() => setSelectedDate(day.key)}><span>{day.weekday}</span><b>{day.day}</b></button>)}</div></div><div className="time-grid">{defaultSlotTimes.map((time) => <button className={selectedTime === time ? "active" : ""} key={time} onClick={() => setSelectedTime(time)}>{time}</button>)}</div><button className="btn btn-primary" onClick={continueFromSlot}>Continue to address <ArrowRight size={16} /></button></div>}
           {step === 2 && <div className="booking-form"><span className="eyebrow">Step 02</span><h1>Where should we arrive?</h1><label><span>Full name</span><input required name="name" value={customer.name} onChange={updateCustomer} onBlur={() => setBookingTouched(curr => ({ ...curr, name: true }))} placeholder="Your name" className={(!customer.name?.trim() && (bookingTouched.name || bookingSubmitted)) ? "input-error" : ""} /></label><label><span>Phone number</span><input required name="phone" value={customer.phone} onChange={updateCustomer} onBlur={() => setBookingTouched(curr => ({ ...curr, phone: true }))} placeholder="+91 98765 43210" className={(!customer.phone?.trim() && (bookingTouched.phone || bookingSubmitted)) ? "input-error" : ""} /></label><label><span>Service address</span><textarea required name="address" value={customer.address} onChange={updateCustomer} onBlur={() => setBookingTouched(curr => ({ ...curr, address: true }))} placeholder="Flat, building, street and landmark" className={(!customer.address?.trim() && (bookingTouched.address || bookingSubmitted)) ? "input-error" : ""} /></label><div className="form-actions"><button className="btn btn-ghost" onClick={() => setStep(1)}>Back</button><button className="btn btn-primary" onClick={openPayment}>Review payment <ArrowRight size={16} /></button></div></div>}
           {step === 3 && <div className="booking-form"><span className="eyebrow">Step 03</span><h1>Choose how to pay.</h1><div className="booking-quantity-box"><div><span>Quantity</span><strong>{quantity} service{quantity > 1 ? "s" : ""}</strong><small>₹{unitPrice} each</small></div><div className="quantity-control"><button type="button" onClick={() => updateQuantity(quantity - 1)} disabled={quantity <= 1}>-</button><b>{quantity}</b><button type="button" onClick={() => updateQuantity(quantity + 1)} disabled={quantity >= 10}>+</button></div></div>
             <div className="payment-method-grid">
@@ -1354,10 +1362,15 @@ function App() {
             <Route path="/pricing" element={<Navigate to="/" replace />} />
             <Route path="/vision" element={<AiGeneratorPage />} />
             <Route path="/book/:serviceId" element={<BookingPage catalogServices={services} cartItems={cartItems} onUpdateCartQuantity={updateCartQuantity} />} />
+            <Route path="/provider/:id" element={<ProviderProfile />} />
             <Route path="/auth" element={<Navigate to="?login=true" replace />} />
             <Route path="/login" element={<Navigate to="?login=true" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/owner" element={<OwnerPanel />} />
+            <Route path="/track/:bookingId" element={<LiveTracking />} />
+            <Route path="/invoice/:id" element={<DigitalInvoice />} />
+            <Route path="/memberships" element={<Memberships />} />
             {import.meta.env.DEV && <Route path="/profile-skeleton-preview" element={<ProfileSkeletonCapture />} />}
             <Route path="/owner" element={<ExternalRedirect to={ADMIN_PANEL_URL} />} />
             <Route path="/backend" element={<ExternalRedirect to={ADMIN_PANEL_URL} />} />

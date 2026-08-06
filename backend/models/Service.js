@@ -14,7 +14,9 @@ class Service extends SupabaseModel {
       title: "service_name",
       image: "image_url",
       region: "service_area",
-      enabled: "is_active"
+      enabled: "is_active",
+      subcategory: "subcategory",
+      isBundle: "is_bundle"
     };
   }
 }

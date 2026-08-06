@@ -11,6 +11,17 @@ import PaymentMethodSetting from "./PaymentMethodSetting.js";
 import Service from "./Service.js";
 import SupportMessage from "./SupportMessage.js";
 import User from "./User.js";
+import Provider from "./Provider.js";
+import Review from "./Review.js";
+import ServiceBundle from "./ServiceBundle.js";
+import Invoice from "./Invoice.js";
+import ProviderAvailability from "./ProviderAvailability.js";
+import ProviderServiceArea from "./ProviderServiceArea.js";
+import Earning from "./Earning.js";
+import Message from "./Message.js";
+import ProviderLocation from "./ProviderLocation.js";
+import Subscription from "./Subscription.js";
+import Complaint from "./Complaint.js";
 
 // Associations commented out as Sequelize is replaced with SupabaseModel
 // AuthEvent.belongsTo(User, { foreignKey: "userId", targetKey: "_id", as: "user" });
@@ -21,4 +32,4 @@ import User from "./User.js";
 // User.hasMany(Booking, { foreignKey: "userId" });
 // User.hasMany(SupportMessage, { foreignKey: "userId" });
 
-export { Agent, AdminAlert, AuditLog, AuthEvent, AuthMethodSetting, BeautyArtist, Booking, Coupon, Payment, PaymentMethodSetting, Service, SupportMessage, User };
+export { Agent, AdminAlert, AuditLog, AuthEvent, AuthMethodSetting, BeautyArtist, Booking, Coupon, Payment, PaymentMethodSetting, Service, SupportMessage, User, Provider, Review, ServiceBundle, Invoice, ProviderAvailability, ProviderServiceArea, Earning, Message, ProviderLocation, Subscription, Complaint };

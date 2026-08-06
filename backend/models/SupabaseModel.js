@@ -556,6 +556,7 @@ export class SupabaseModel {
       .delete()
       .eq(dbPk, primaryKeyValue);
 
-    if (error) throw error;
   }
 }
+
+export default SupabaseModel;

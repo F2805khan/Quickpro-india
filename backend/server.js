@@ -21,6 +21,14 @@ import supportRoutes from "./routes/supportRoutes.js";
 import imageRoutes from "./routes/imageRoutes.js";
 import locationRoutes from "./routes/locationRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
+import providerRoutes from "./routes/providerRoutes.js";
+import scheduleRoutes from "./routes/scheduleRoutes.js";
+import providerDashboardRoutes from "./routes/providerDashboardRoutes.js";
+import trackingRoutes from "./routes/trackingRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
+import subscriptionRoutes from "./routes/subscriptionRoutes.js";
+import invoiceRoutes from "./routes/invoiceRoutes.js";
+import complaintRoutes from "./routes/complaintRoutes.js";
 import ensureAdminUser from "./utils/ensureAdminUser.js";
 import { isEmailDeliveryConfigured } from "./utils/email.js";
 
@@ -62,6 +70,14 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/providers", providerRoutes);
+app.use("/api/schedule", scheduleRoutes);
+app.use("/api/provider-dashboard", providerDashboardRoutes);
+app.use("/api/tracking", trackingRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/subscriptions", subscriptionRoutes);
+app.use("/api/invoices", invoiceRoutes);
+app.use("/api/complaints", complaintRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/admin/database", databaseRoutes);
 app.use("/api/admin", adminRoutes);
@@ -101,6 +117,28 @@ const start = async () => {
 
   io.on("connection", (socket) => {
     console.log("Client connected via socket:", socket.id);
+
+    // Join a specific booking room for isolated communication
+    socket.on("join_booking", (bookingId) => {
+      socket.join(bookingId);
+      console.log(`Socket ${socket.id} joined booking ${bookingId}`);
+    });
+
+    // Handle incoming chat messages
+    socket.on("send_message", async (data) => {
+      const { bookingId, senderId, receiverId, content } = data;
+      // In production, we'd save it to the DB here using Message model
+      // Then broadcast it to the room
+      io.to(bookingId).emit("receive_message", { senderId, content, timestamp: new Date() });
+    });
+
+    // Handle provider location updates
+    socket.on("location_update", async (data) => {
+      const { bookingId, providerId, latitude, longitude } = data;
+      // In production, we'd throttle and save to ProviderLocation DB
+      io.to(bookingId).emit("location_changed", { latitude, longitude, timestamp: new Date() });
+    });
+
     socket.on("disconnect", () => {
       console.log("Client disconnected:", socket.id);
     });
