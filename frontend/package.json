@@ -11,11 +11,13 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "@lottiefiles/dotlottie-react": "^0.19.4",
     "@supabase/supabase-js": "^2.110.1",
     "@vitejs/plugin-react": "^5.0.0",
     "boneyard-js": "^1.8.1",
     "firebase": "^12.14.0",
+    "gsap": "^3.15.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",

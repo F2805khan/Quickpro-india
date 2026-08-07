@@ -34,7 +34,7 @@ const lookupLocation = async (latitude, longitude) => {
     headers: {
       Accept: "application/json",
       "Accept-Language": "en",
-      "User-Agent": "fixOindia/1.0 (support@fixoindia.in)"
+      "User-Agent": "Quickpro India/1.0 (support@Quickpro India.in)"
     }
   });
 

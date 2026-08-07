@@ -8,7 +8,7 @@ export const normalizePhone = (phone) => {
 
 const bookingMessage = (booking) =>
   [
-    `fixOindia booking update: ${booking.bookingId}`,
+    `Quickpro India booking update: ${booking.bookingId}`,
     `Service: ${booking.serviceName}`,
     `Customer: ${booking.customerName}`,
     `Phone: ${booking.phone}`,
@@ -124,13 +124,13 @@ const STATUS_LINES = {
   "Professional Assigned": "A professional has been assigned to your booking.",
   "On The Way": "Your professional is on the way!",
   "Service In Progress": "Your service is now in progress.",
-  Completed: "Your service is complete. Thank you for choosing fixOindia!",
+  Completed: "Your service is complete. Thank you for choosing Quickpro India!",
   Cancelled: "Your booking has been cancelled."
 };
 
 const statusMessage = (booking) =>
   [
-    `fixOindia update for booking ${booking.bookingId}`,
+    `Quickpro India update for booking ${booking.bookingId}`,
     ``,
     STATUS_LINES[booking.bookingStatus] || `Status: ${booking.bookingStatus}`,
     ``,
@@ -150,7 +150,7 @@ export async function notifyBookingStatusUpdate(booking) {
 /** Notify the customer that their booking was cancelled */
 export async function notifyBookingCancelled(booking) {
   const message = [
-    `fixOindia update for booking ${booking.bookingId}`,
+    `Quickpro India update for booking ${booking.bookingId}`,
     ``,
     `Your booking for "${booking.serviceName}" on ${booking.date} at ${booking.time} has been cancelled.`,
     ``,

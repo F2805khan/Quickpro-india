@@ -50,7 +50,7 @@ app.use(express.json({ limit: "1mb" }));
 
 app.get("/api", (req, res) => {
   res.json({
-    name: "fixOindia API",
+    name: "Quickpro India API",
     tagline: "All Services. One Click.",
     health: "ok"
   });
@@ -145,7 +145,7 @@ const start = async () => {
   });
 
   httpServer.listen(PORT, () => {
-    console.log(`fixOindia API running on port ${PORT}`);
+    console.log(`Quickpro India API running on port ${PORT}`);
   });
 };
 

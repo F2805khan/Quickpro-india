@@ -91,7 +91,7 @@ const findAdminUserForSync = async () => {
 const createConfiguredAdminUser = async () => {
   const configured = getConfiguredAdminIdentity();
   return User.create({
-    name: normalize(process.env.ADMIN_NAME) || "fixOindia Control",
+    name: normalize(process.env.ADMIN_NAME) || "Quickpro India Control",
     userId: configured.userId,
     email: configured.email,
     phone: configured.phone,
@@ -559,7 +559,7 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   const isSignup = !user;
   if (!user) {
     user = await User.create({
-      name: name || email?.split("@")[0] || "fixOindia Customer",
+      name: name || email?.split("@")[0] || "Quickpro India Customer",
       email,
       phone: phone || null,
       userId: userId?.trim() ? userId.trim().toLowerCase() : undefined,
@@ -651,7 +651,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
 
   if (!user) {
     user = await User.create({
-      name: decodedToken.name || email.split("@")[0] || "fixOindia Customer",
+      name: decodedToken.name || email.split("@")[0] || "Quickpro India Customer",
       email,
       phone: decodedToken.phone_number || null,
       address: "",

@@ -63,7 +63,7 @@ const bookingDetailMessage = (booking) =>
   ].filter(Boolean).join("\n");
 
 const MENU_MESSAGE = [
-  "Hi! I'm the fixOindia assistant. I can help you with:",
+  "Hi! I'm the Quickpro India assistant. I can help you with:",
   "",
   '• "status" — check your recent bookings',
   '• "status QF123456" — check a specific booking',
@@ -86,7 +86,7 @@ const buildAiContext = async (phone) => {
   ]);
 
   return [
-    "Business: fixOindia — home services booking platform in India (repairs, cleaning, beauty, and more). Tagline: All Services. One Click.",
+    "Business: Quickpro India — home services booking platform in India (repairs, cleaning, beauty, and more). Tagline: All Services. One Click.",
     "",
     "Customer's recent bookings:",
     bookings.length ? bookings.map(bookingSummaryLine).join("\n") : "(none found for this phone number)",
@@ -112,7 +112,7 @@ const generateAiReply = async (phone, text) => {
       model: process.env.WHATSAPP_AI_MODEL?.trim() || "claude-3-5-haiku-latest",
       max_tokens: 300,
       system: [
-        "You are the WhatsApp support assistant for fixOindia.",
+        "You are the WhatsApp support assistant for Quickpro India.",
         "Reply in short, friendly plain text suitable for WhatsApp (no markdown).",
         "Only answer using the context provided. If you don't know something,",
         "ask the customer to contact support through the app.",
@@ -166,14 +166,14 @@ export const buildReply = async (phone, rawText) => {
   if (/\b(service|services|price|prices|book|rate|menu)\b/.test(lower)) {
     const services = await Service.findAll({ where: { enabled: true }, limit: 8 });
     if (!services.length) {
-      return "Our service list is being updated. Please check the fixOindia app for the latest services.";
+      return "Our service list is being updated. Please check the Quickpro India app for the latest services.";
     }
     return [
-      "Popular fixOindia services:",
+      "Popular Quickpro India services:",
       "",
       ...services.map((service) => `• ${service.title} — ₹${service.price}`),
       "",
-      "Book any service in the fixOindia app!"
+      "Book any service in the Quickpro India app!"
     ].join("\n");
   }
 
@@ -183,7 +183,7 @@ export const buildReply = async (phone, rawText) => {
       "Sorry to hear you need help! You can:",
       "",
       "• Reply here with your booking ID and issue",
-      "• Use the Support section in the fixOindia app",
+      "• Use the Support section in the Quickpro India app",
       "",
       "Our team will get back to you as soon as possible."
     ].join("\n");

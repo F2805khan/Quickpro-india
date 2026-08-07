@@ -1,5 +1,5 @@
 -- ============================================================
--- fixOindia — Cleanup duplicate camelCase columns
+-- Quickpro India — Cleanup duplicate camelCase columns
 -- ============================================================
 -- The migration added camelCase columns but the tables already
 -- had snake_case equivalents. This drops the duplicates and

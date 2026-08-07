@@ -46,13 +46,13 @@ const renderEmail = ({ preheader, heading, bodyHtml, bodyText }) => ({
     <div style="display:none; max-height:0; overflow:hidden;">${escapeHtml(preheader)}</div>
     <div style="background:#f6f8fb; padding:32px 16px; font-family:Arial, sans-serif; color:#172033;">
       <div style="max-width:560px; margin:0 auto; background:#ffffff; border:1px solid #e7ecf2; border-radius:16px; padding:28px;">
-        <p style="margin:0 0 20px; color:#2563eb; font-size:13px; font-weight:700; letter-spacing:1px;">FIXOINDIA</p>
+        <p style="margin:0 0 20px; color:#2563eb; font-size:13px; font-weight:700; letter-spacing:1px;">Quickpro India</p>
         <h1 style="margin:0 0 18px; font-size:24px;">${escapeHtml(heading)}</h1>
         ${bodyHtml}
       </div>
     </div>
   `,
-  text: `fixOindia\n\n${heading}\n\n${bodyText}`
+  text: `Quickpro India\n\n${heading}\n\n${bodyText}`
 });
 
 export const isEmailDeliveryConfigured = () => Boolean(process.env.RESEND_API_KEY?.trim());
@@ -67,7 +67,7 @@ const sendEmail = async ({ to, subject, html, text, replyTo }) => {
   if (!resend) return false;
 
   const { error } = await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL?.trim() || "fixOindia <onboarding@resend.dev>",
+    from: process.env.RESEND_FROM_EMAIL?.trim() || "Quickpro India <onboarding@resend.dev>",
     to: [to],
     subject,
     html,
@@ -84,8 +84,8 @@ const sendEmail = async ({ to, subject, html, text, replyTo }) => {
 
 export const sendOtpEmail = ({ to, otp }) => {
   const content = renderEmail({
-    preheader: "Your fixOindia verification code",
-    heading: "Verify your fixOindia account",
+    preheader: "Your Quickpro India verification code",
+    heading: "Verify your Quickpro India account",
     bodyHtml: `
       <p style="margin:0 0 12px;">Use this verification code to continue:</p>
       <p style="margin:0 0 18px; font-size:28px; font-weight:700; letter-spacing:6px;">${escapeHtml(otp)}</p>
@@ -96,7 +96,7 @@ export const sendOtpEmail = ({ to, otp }) => {
 
   return sendEmail({
     to,
-    subject: "Your fixOindia verification code",
+    subject: "Your Quickpro India verification code",
     ...content
   });
 };
@@ -110,18 +110,18 @@ export const sendSignupEmail = ({ to, name, phone, userId, address }) => {
     ["Address", address]
   ];
   const content = renderEmail({
-    preheader: "Welcome to fixOindia",
-    heading: "Your fixOindia account is ready",
+    preheader: "Welcome to Quickpro India",
+    heading: "Your Quickpro India account is ready",
     bodyHtml: `
-      <p style="margin:0 0 14px;">Hi ${escapeHtml(name || "there")}, welcome to fixOindia. Your signup was successful.</p>
+      <p style="margin:0 0 14px;">Hi ${escapeHtml(name || "there")}, welcome to Quickpro India. Your signup was successful.</p>
       <table style="width:100%; border-collapse:collapse; font-size:14px;">${renderRows(rows)}</table>
     `,
-    bodyText: `Hi ${name || "there"}, welcome to fixOindia. Your signup was successful.\n\n${renderTextRows(rows)}`
+    bodyText: `Hi ${name || "there"}, welcome to Quickpro India. Your signup was successful.\n\n${renderTextRows(rows)}`
   });
 
   return sendEmail({
     to,
-    subject: "Welcome to fixOindia",
+    subject: "Welcome to Quickpro India",
     ...content
   });
 };
@@ -133,19 +133,19 @@ export const sendLoginEmail = ({ to, name, method = "password", signedInAt = new
     ["Signed in at", formatDateTime(signedInAt)]
   ];
   const content = renderEmail({
-    preheader: "New login to your fixOindia account",
+    preheader: "New login to your Quickpro India account",
     heading: "New login detected",
     bodyHtml: `
-      <p style="margin:0 0 14px;">Hi ${escapeHtml(name || "there")}, your fixOindia account was signed in successfully.</p>
+      <p style="margin:0 0 14px;">Hi ${escapeHtml(name || "there")}, your Quickpro India account was signed in successfully.</p>
       <table style="width:100%; border-collapse:collapse; font-size:14px;">${renderRows(rows)}</table>
       <p style="margin:16px 0 0; color:#5f6b7a; font-size:14px;">If this was not you, reset your password immediately.</p>
     `,
-    bodyText: `Hi ${name || "there"}, your fixOindia account was signed in successfully.\n\n${renderTextRows(rows)}\n\nIf this was not you, reset your password immediately.`
+    bodyText: `Hi ${name || "there"}, your Quickpro India account was signed in successfully.\n\n${renderTextRows(rows)}\n\nIf this was not you, reset your password immediately.`
   });
 
   return sendEmail({
     to,
-    subject: "New login to your fixOindia account",
+    subject: "New login to your Quickpro India account",
     ...content
   });
 };
@@ -174,15 +174,15 @@ export const sendReviewConfirmationEmail = ({
     preheader: "Thank you for your feedback",
     heading: "Thank you for your feedback",
     bodyHtml: `
-      <p style="margin:0 0 14px;">Hi ${escapeHtml(name || "there")}, thank you for sharing your experience with fixOindia. We received your review with the details below.</p>
+      <p style="margin:0 0 14px;">Hi ${escapeHtml(name || "there")}, thank you for sharing your experience with Quickpro India. We received your review with the details below.</p>
       <table style="width:100%; border-collapse:collapse; font-size:14px;">${renderRows(rows)}</table>
     `,
-    bodyText: `Hi ${name || "there"}, thank you for sharing your experience with fixOindia. We received your review with the details below.\n\n${renderTextRows(rows)}`
+    bodyText: `Hi ${name || "there"}, thank you for sharing your experience with Quickpro India. We received your review with the details below.\n\n${renderTextRows(rows)}`
   });
 
   return sendEmail({
     to,
-    subject: "Thank you for your fixOindia feedback",
+    subject: "Thank you for your Quickpro India feedback",
     ...content
   });
 };
@@ -214,16 +214,16 @@ export const sendReviewNotificationEmail = ({
     preheader: `New ${rating}/5 review from ${name}`,
     heading: "New customer review received",
     bodyHtml: `
-      <p style="margin:0 0 14px;">A customer submitted a new fixOindia review. The complete feedback is below.</p>
+      <p style="margin:0 0 14px;">A customer submitted a new Quickpro India review. The complete feedback is below.</p>
       <table style="width:100%; border-collapse:collapse; font-size:14px;">${renderRows(rows)}</table>
     `,
-    bodyText: `A customer submitted a new fixOindia review.\n\n${renderTextRows(rows)}`
+    bodyText: `A customer submitted a new Quickpro India review.\n\n${renderTextRows(rows)}`
   });
 
   return sendEmail({
     to: reviewTo,
     replyTo: email,
-    subject: `New fixOindia review: ${rating}/5 from ${cleanSubjectPart(name)}`,
+    subject: `New Quickpro India review: ${rating}/5 from ${cleanSubjectPart(name)}`,
     ...content
   });
 };
@@ -262,7 +262,7 @@ export const sendSupportNotificationEmail = ({
   return sendEmail({
     to: supportTo,
     replyTo: email,
-    subject: `${ticketId ? `[${cleanSubjectPart(ticketId)}] ` : ""}New fixOindia support ticket from ${cleanSubjectPart(name)}`,
+    subject: `${ticketId ? `[${cleanSubjectPart(ticketId)}] ` : ""}New Quickpro India support ticket from ${cleanSubjectPart(name)}`,
     ...content
   });
 };
@@ -270,19 +270,19 @@ export const sendSupportNotificationEmail = ({
 export const sendSupportReplyEmail = ({ to, name, reply }) => {
   const greeting = name?.trim() || "there";
   const content = renderEmail({
-    preheader: "fixOindia support replied to your message",
-    heading: "A reply from fixOindia Support",
+    preheader: "Quickpro India support replied to your message",
+    heading: "A reply from Quickpro India Support",
     bodyHtml: `
       <p style="margin:0 0 12px;">Hi ${escapeHtml(greeting)},</p>
       <p style="margin:0 0 18px; line-height:1.6;">${escapeHtml(reply).replaceAll("\n", "<br />")}</p>
-      <p style="margin:0; color:#5f6b7a;">fixOindia Support</p>
+      <p style="margin:0; color:#5f6b7a;">Quickpro India Support</p>
     `,
-    bodyText: `Hi ${greeting},\n\n${reply}\n\nfixOindia Support`
+    bodyText: `Hi ${greeting},\n\n${reply}\n\nQuickpro India Support`
   });
 
   return sendEmail({
     to,
-    subject: "fixOindia support replied to your message",
+    subject: "Quickpro India support replied to your message",
     ...content
   });
 };

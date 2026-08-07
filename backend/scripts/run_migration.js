@@ -85,7 +85,7 @@ async function createMigrationFunction() {
 }
 
 async function main() {
-  console.log("=== fixOindia Schema Migration (via Supabase API) ===\n");
+  console.log("=== Quickpro India Schema Migration (via Supabase API) ===\n");
 
   /* First, check what tables already exist */
   console.log("Checking existing tables...");

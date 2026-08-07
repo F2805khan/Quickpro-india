@@ -1,5 +1,5 @@
 -- ============================================================
--- fixOindia — Complete Supabase Schema Migration
+-- Quickpro India — Complete Supabase Schema Migration
 -- ============================================================
 -- Safe to run multiple times (idempotent).
 -- Uses IF NOT EXISTS for tables and columns.

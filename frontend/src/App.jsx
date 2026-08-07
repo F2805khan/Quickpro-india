@@ -1,7 +1,10 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
+import { useGSAP } from "@gsap/react";
+import { gsap } from "./gsap-setup.js";
 import { toast } from "./utils/notifications.js";
 import CouponApplyBox from "./components/CouponApplyBox.jsx";
+import GlobalParallax from "./components/GlobalParallax.jsx";
 import {
   ArrowRight, BadgeCheck, Banknote, Bell, CalendarDays, Check, CheckCircle2, ChevronDown, ChevronLeft,
   ChevronRight, Clock3, CreditCard, Droplets, Flower2, Gauge, Home, Instagram,
@@ -479,6 +482,34 @@ function PricingCards({ condensed = false }) {
 
 function HomePage({ onBookService, services = fallbackServices.map(normalizeService) }) {
   const sliderRef = useRef(null);
+  const container = useRef(null);
+
+  useGSAP(() => {
+    // Scramble text effect on hero
+    gsap.to(".hero-line-accent", {
+      duration: 1.5,
+      scrambleText: { text: "Handled.", chars: "lowerCase", revealDelay: 0.5, tweenLength: false },
+      ease: "power2.out"
+    });
+
+    // Scroll animation for sections
+    const sections = gsap.utils.toArray(".section");
+    sections.forEach((sec) => {
+      gsap.fromTo(sec, 
+        { opacity: 0, y: 50 },
+        { 
+          opacity: 1, 
+          y: 0, 
+          duration: 1,
+          scrollTrigger: {
+            trigger: sec,
+            start: "top 80%",
+            toggleActions: "play none none reverse"
+          }
+        }
+      );
+    });
+  }, { scope: container });
 
   const scrollSlider = (direction) => {
     if (sliderRef.current) {
@@ -550,7 +581,7 @@ function HomePage({ onBookService, services = fallbackServices.map(normalizeServ
     }
   };
 
-  return <main className="landing-page">
+  return <main className="landing-page" ref={container}>
     <section className="hero shell">
       <div className="hero-copy">
         <span className="eyebrow hero-eyebrow"><span className="live-dot" /> Trusted home care, one tap away</span>
@@ -563,17 +594,17 @@ function HomePage({ onBookService, services = fallbackServices.map(normalizeServ
         <img className="hero-photo" src="/images/site/home-care.jpg" alt="FunService home care professional" />
         <div className="art-grid" /><div className="orb orb-one" /><div className="orb orb-two" /><div className="orb orb-three" />
         <div className="hero-3d-cards" aria-hidden="true">
-          <div className="hero-3d-card card-clean">
+          <div className="hero-3d-card card-clean" data-speed="1.2">
             <span><Sparkles size={18} /> Deep Clean</span>
             <strong>₹2,199</strong>
             <small>Today · 10:30 AM</small>
           </div>
-          <div className="hero-3d-card card-care">
+          <div className="hero-3d-card card-care" data-speed="0.8">
             <span><ShieldCheck size={18} /> Verified Pro</span>
             <strong>4.9 rating</strong>
             <small>Background checked</small>
           </div>
-          <div className="hero-3d-card card-booked">
+          <div className="hero-3d-card card-booked" data-speed="1.1">
             <span><CreditCard size={18} /> Booking</span>
             <strong>Confirmed</strong>
             <small>Secure payment ready</small>
@@ -1350,6 +1381,7 @@ function App() {
 
   return (
     <>
+      <GlobalParallax />
       {showSplash && <SplashScreen onFinished={onSplashFinished} />}
       <Navbar cartCount={cartCount} />
       <div className="route-stage" key={location.pathname}>
