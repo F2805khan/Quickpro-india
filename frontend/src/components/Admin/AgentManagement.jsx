@@ -136,8 +136,6 @@ const AgentManagement = () => {
           <option value="verified">Verified</option>
           <option value="rejected">Rejected</option>
         </select>
-
-        </select>
       </div>
 
       <div className="table-responsive" style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
