@@ -1,15 +1,16 @@
-import { gsap } from "gsap";
+import {
+  gsap,
+  Draggable,
+  EaselPlugin,
+  Flip,
+  MotionPathPlugin,
+  Observer,
+  PixiPlugin,
+  ScrollTrigger,
+  ScrollToPlugin,
+  TextPlugin
+} from "gsap/all";
 import { useGSAP } from "@gsap/react";
-    
-import { Draggable } from "gsap/Draggable";
-import { EaselPlugin } from "gsap/EaselPlugin";
-import { Flip } from "gsap/Flip";
-import { MotionPathPlugin } from "gsap/MotionPathPlugin";
-import { Observer } from "gsap/Observer";
-import { PixiPlugin } from "gsap/PixiPlugin";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { ScrollToPlugin } from "gsap/ScrollToPlugin";
-import { TextPlugin } from "gsap/TextPlugin";
 import { ScrambleTextPlugin } from "./plugins/ScrambleTextPlugin.js";
 import { DrawSVGPlugin } from "./plugins/DrawSVGPlugin.js";
 import { GSDevTools } from "./plugins/GSDevTools.js";

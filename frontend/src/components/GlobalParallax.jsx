@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
-import { gsap } from "gsap";
+import { gsap, ScrollTrigger } from "gsap/all";
 import { useGSAP } from "@gsap/react";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useLocation } from "react-router-dom";
 
 // This component acts as a lightweight replacement for ScrollSmoother's data-speed parallax.

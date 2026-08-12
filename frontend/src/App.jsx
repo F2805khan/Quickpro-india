@@ -12,7 +12,6 @@ import {
   PlayCircle, ScanLine, Scissors, ShieldCheck, ShoppingCart, Sparkles, Star, UserRound, UsersRound,
   WalletCards, WandSparkles, WashingMachine, Wind, Wrench, X, Zap, Car
 } from "lucide-react";
-import OwnerPanel from "./pages/OwnerPanel.jsx";
 import LiveTracking from "./pages/LiveTracking.jsx";
 import DigitalInvoice from "./pages/DigitalInvoice.jsx";
 import Memberships from "./pages/Memberships.jsx";
@@ -1399,7 +1398,6 @@ function App() {
             <Route path="/login" element={<Navigate to="?login=true" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/owner" element={<OwnerPanel />} />
             <Route path="/track/:bookingId" element={<LiveTracking />} />
             <Route path="/invoice/:id" element={<DigitalInvoice />} />
             <Route path="/memberships" element={<Memberships />} />
