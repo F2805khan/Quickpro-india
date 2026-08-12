@@ -104,10 +104,6 @@ const AgentDetail = ({ agentId, onBack }) => {
               <span className={`status-badge ${agent.status}`} style={{ padding: '5px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', background: '#f8f9fa', border: '1px solid #ddd' }}>
                 {agent.status}
               </span>
-              <span style={{ padding: '5px 10px', borderRadius: '20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px', background: agent.isOnline ? '#dcfce7' : '#f1f5f9', color: agent.isOnline ? '#166534' : '#64748b' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: agent.isOnline ? '#22c55e' : '#94a3b8' }}></span>
-                {agent.isOnline ? 'Online' : 'Offline'}
-              </span>
             </div>
             
             <p style={{ fontSize: '0.8rem', color: '#888' }}>

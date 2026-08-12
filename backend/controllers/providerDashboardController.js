@@ -1,4 +1,4 @@
-import { Booking, Provider, Earning } from "../models/index.js";
+import { Booking, Provider, Earning, Agent } from "../models/index.js";
 
 export const getProviderJobs = async (req, res) => {
   try {
@@ -59,5 +59,38 @@ export const getEarnings = async (req, res) => {
   } catch (error) {
     console.error("Error fetching earnings:", error);
     res.status(500).json({ error: "Failed to fetch earnings" });
+  }
+};
+
+export const getOnlineStatus = async (req, res) => {
+  try {
+    const { providerId } = req.params;
+    const agent = await Agent.findByPk(providerId);
+    if (!agent) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+    res.json({ isOnline: agent.isOnline });
+  } catch (error) {
+    console.error("Error getting online status:", error);
+    res.status(500).json({ error: "Failed to get status" });
+  }
+};
+
+export const toggleOnlineStatus = async (req, res) => {
+  try {
+    const { providerId } = req.params;
+    const { isOnline } = req.body;
+    
+    // We treat providerId as the Agent id since they share the same entity in some contexts
+    const agent = await Agent.findByPk(providerId);
+    if (!agent) {
+      return res.status(404).json({ error: "Agent not found" });
+    }
+    
+    await agent.update({ isOnline: Boolean(isOnline) });
+    res.json({ message: "Status updated successfully", isOnline: agent.isOnline });
+  } catch (error) {
+    console.error("Error toggling online status:", error);
+    res.status(500).json({ error: "Failed to update status" });
   }
 };

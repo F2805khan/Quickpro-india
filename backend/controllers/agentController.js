@@ -5,13 +5,10 @@ import { supabase } from "../config/supabase.js";
 // GET /api/admin/agents
 export const getAgents = async (req, res) => {
   try {
-    const { status, isOnline, verificationStatus, search, sort, dir, page = 1, limit = 50 } = req.query;
+    const { status, verificationStatus, search, sort, dir, page = 1, limit = 50 } = req.query;
     let where = {};
-    
     if (status && status !== 'All') where.status = status.toLowerCase();
     if (verificationStatus && verificationStatus !== 'All') where.verificationStatus = verificationStatus.toLowerCase();
-    if (isOnline === 'true') where.isOnline = true;
-    if (isOnline === 'false') where.isOnline = false;
 
     if (search) {
       where.or = [

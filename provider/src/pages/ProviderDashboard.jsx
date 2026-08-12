@@ -11,6 +11,8 @@ export default function ProviderDashboard() {
   const [socket, setSocket] = useState(null);
   const [activeJobId, setActiveJobId] = useState(null);
   const [showChatForJob, setShowChatForJob] = useState(null);
+  const [isOnline, setIsOnline] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
 
   // Hardcoding providerId for mock purposes. In reality, get from context/session.
   const providerId = "00000000-0000-0000-0000-000000000000"; 
@@ -18,8 +20,44 @@ export default function ProviderDashboard() {
   useEffect(() => {
     const newSocket = io(SOCKET_URL);
     setSocket(newSocket);
+    
+    // Fetch initial status
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"}/api/provider-dashboard/${providerId}/online-status`);
+        if (res.ok) {
+          const data = await res.json();
+          setIsOnline(data.isOnline);
+        }
+      } catch (e) {
+        console.error("Failed to fetch status", e);
+      }
+    };
+    fetchStatus();
+    
     return () => newSocket.disconnect();
   }, []);
+
+  const toggleOnlineStatus = async () => {
+    if (isToggling) return;
+    setIsToggling(true);
+    try {
+      // Create api method or use fetch directly. We'll use fetch here if api method is missing.
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"}/api/provider-dashboard/${providerId}/online-status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isOnline: !isOnline })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsOnline(data.isOnline);
+      }
+    } catch (e) {
+      console.error("Failed to toggle status", e);
+    } finally {
+      setIsToggling(false);
+    }
+  };
 
   const simulateTracking = (jobId) => {
     if (!socket) return;
@@ -59,10 +97,21 @@ export default function ProviderDashboard() {
     <div className="container" style={{ padding: "40px 20px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" }}>
         <h1>Provider Dashboard</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "var(--surface)", padding: "10px 20px", borderRadius: "30px", border: "1px solid var(--border)" }}>
-          <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#10b981" }}></div>
-          <span style={{ fontWeight: "600" }}>Online & Accepting Jobs</span>
-        </div>
+        <button 
+          onClick={toggleOnlineStatus}
+          disabled={isToggling}
+          style={{ 
+            display: "flex", alignItems: "center", gap: "10px", 
+            background: isOnline ? "rgba(16, 185, 129, 0.1)" : "rgba(100, 116, 139, 0.1)", 
+            padding: "10px 20px", borderRadius: "30px", border: "1px solid var(--border)",
+            cursor: isToggling ? "not-allowed" : "pointer",
+            transition: "all 0.3s"
+          }}>
+          <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: isOnline ? "#10b981" : "#64748b" }}></div>
+          <span style={{ fontWeight: "600", color: isOnline ? "#10b981" : "#64748b" }}>
+            {isOnline ? "Online & Accepting Jobs" : "Offline (Not Accepting Jobs)"}
+          </span>
+        </button>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "40px" }}>

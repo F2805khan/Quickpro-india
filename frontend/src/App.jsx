@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState, useRef } fro
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useGSAP } from "@gsap/react";
 import { gsap } from "./gsap-setup.js";
+import { Flip } from "gsap/all";
 import { toast } from "./utils/notifications.js";
 import CouponApplyBox from "./components/CouponApplyBox.jsx";
 import GlobalParallax from "./components/GlobalParallax.jsx";
@@ -508,6 +509,25 @@ function HomePage({ onBookService, services = fallbackServices.map(normalizeServ
         }
       );
     });
+
+    // Full-screen hero art animation on page load
+    const heroArt = document.querySelector(".hero-art");
+    if (heroArt) {
+      // Small delay to ensure initial layout is rendered
+      setTimeout(() => {
+        const state = Flip.getState(heroArt);
+        heroArt.classList.add("fullscreen-hero-art");
+        Flip.from(state, {
+          duration: 1.8,
+          ease: "power3.inOut",
+          absolute: true,
+          onComplete: () => {
+            gsap.to(heroArt, { filter: "brightness(0.5)", duration: 1 });
+            gsap.to(".hero-copy", { color: "#fff", position: "relative", zIndex: 10, duration: 1 });
+          }
+        });
+      }, 500);
+    }
   }, { scope: container });
 
   const scrollSlider = (direction) => {

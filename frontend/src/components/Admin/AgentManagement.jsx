@@ -11,12 +11,11 @@ const AgentManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [verificationFilter, setVerificationFilter] = useState("All");
-  const [onlineFilter, setOnlineFilter] = useState("All");
   const [selectedRows, setSelectedRows] = useState([]);
 
   useEffect(() => {
     loadAgents();
-  }, [statusFilter, verificationFilter, onlineFilter, searchTerm]);
+  }, [statusFilter, verificationFilter, searchTerm]);
 
   const loadAgents = async () => {
     try {
@@ -24,7 +23,6 @@ const AgentManagement = () => {
       const queryParams = new URLSearchParams();
       if (statusFilter !== "All") queryParams.append("status", statusFilter);
       if (verificationFilter !== "All") queryParams.append("verificationStatus", verificationFilter);
-      if (onlineFilter !== "All") queryParams.append("isOnline", onlineFilter === "Online" ? "true" : "false");
       if (searchTerm) queryParams.append("search", searchTerm);
       
       const data = await api.getAgents(`?${queryParams.toString()}`);
@@ -139,10 +137,6 @@ const AgentManagement = () => {
           <option value="rejected">Rejected</option>
         </select>
 
-        <select className="input-field" value={onlineFilter} onChange={(e) => setOnlineFilter(e.target.value)}>
-          <option value="All">All Presence</option>
-          <option value="Online">Online</option>
-          <option value="Offline">Offline</option>
         </select>
       </div>
 
@@ -178,7 +172,6 @@ const AgentManagement = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div className="avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#f0f0f0', overflow: 'hidden', position: 'relative' }}>
                         {agent.photo ? <img src={agent.photo} alt={agent.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User size={20} style={{ margin: '10px', color: '#999' }} />}
-                        <div style={{ position: 'absolute', bottom: '2px', right: '2px', width: '10px', height: '10px', borderRadius: '50%', background: agent.isOnline ? '#22c55e' : '#ccc', border: '2px solid white' }} title={agent.isOnline ? 'Online' : 'Offline'}></div>
                       </div>
                       <div>
                         <div style={{ fontWeight: '500' }}>{agent.name}</div>
