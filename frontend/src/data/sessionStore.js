@@ -37,7 +37,7 @@ export const onSessionChanged = (callback) => {
     clearTimeout(sessionTimer);
     sessionTimer = setTimeout(() => emit(), 80);
   };
-  const unsubscribeFirebase = onAuthStateChanged(auth, () => onBackendSessionChanged());
+  const unsubscribeFirebase = auth ? onAuthStateChanged(auth, () => onBackendSessionChanged()) : () => {};
 
   emit();
   window.addEventListener(sessionChangedEvent, onBackendSessionChanged);
@@ -62,5 +62,5 @@ export const onProfileUpdated = (callback) => {
 
 export const logoutSession = async () => {
   api.clearSession();
-  if (auth.currentUser) await signOutFirebase(auth);
+  if (auth?.currentUser) await signOutFirebase(auth);
 };

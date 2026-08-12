@@ -18,9 +18,9 @@ const firebaseConfig = {
     measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-export const analytics = getAnalytics(app);
+const hasFirebase = !!firebaseConfig.apiKey;
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const app = hasFirebase ? initializeApp(firebaseConfig) : null;
+export const analytics = (hasFirebase && typeof window !== 'undefined' && firebaseConfig.projectId) ? getAnalytics(app) : null;
+export const auth = hasFirebase ? getAuth(app) : null;
+export const db = hasFirebase ? getFirestore(app) : null;
