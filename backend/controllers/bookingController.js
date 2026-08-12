@@ -246,6 +246,7 @@ export const assignProfessional = asyncHandler(async (req, res) => {
     throw new Error("Booking not found");
   }
 
+  booking.providerId = req.body.agentId || req.body.providerId || booking.providerId;
   booking.professionalName = req.body.professionalName || booking.professionalName;
   booking.professionalPhone = req.body.professionalPhone || booking.professionalPhone || "99988877766";
   booking.professionalPhoto = req.body.professionalPhoto || booking.professionalPhoto;

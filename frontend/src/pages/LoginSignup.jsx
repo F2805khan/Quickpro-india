@@ -6,6 +6,7 @@ import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
 import { api } from "../api/client.js";
 import { auth } from "../components/firebase.js";
 import { logoutSession, onSessionChanged } from "../data/sessionStore.js";
+import "../styles/otp-card.css";
 
 const blankForm = {
   identifier: "",
@@ -102,6 +103,50 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
   const update = (event) => {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleOtpChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return;
+    
+    let currentOtp = form.otp.split('');
+    // Pad array if needed
+    while (currentOtp.length < 6) currentOtp.push('');
+    
+    currentOtp[index] = value.slice(-1); // Take only the last character if multiple are typed
+    
+    const newOtp = currentOtp.join('');
+    setForm(current => ({ ...current, otp: newOtp }));
+    
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-slot-${index + 1}`);
+      if (nextInput) nextInput.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !form.otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-slot-${index - 1}`);
+      if (prevInput) {
+        prevInput.focus();
+        // Clear the previous input
+        let currentOtp = form.otp.split('');
+        currentOtp[index - 1] = '';
+        setForm(current => ({ ...current, otp: currentOtp.join('') }));
+      }
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').slice(0, 6).replace(/\D/g, '');
+    if (pastedData) {
+      setForm(current => ({ ...current, otp: pastedData }));
+      // Focus the next empty slot or the last slot
+      const nextIndex = Math.min(pastedData.length, 5);
+      const nextInput = document.getElementById(`otp-slot-${nextIndex}`);
+      if (nextInput) nextInput.focus();
+    }
   };
 
   const requestOtp = async (event) => {
@@ -373,33 +418,53 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
                 </button>
               </form>
             ) : (
-              <form className="auth-form" onSubmit={verifyOtp}>
-                <div className="brave-theme-inner-card">
-                  <div className="brave-input-group" style={{ marginBottom: 0 }}>
-                    <label>OTP verification code</label>
-                    <input
-                      className="brave-input"
-                      required
-                      name="otp"
-                      value={form.otp}
-                      onChange={update}
-                      placeholder="Enter 6-digit OTP"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      style={{ textAlign: 'center', fontSize: '20px', letterSpacing: '2px' }}
-                    />
+              <form onSubmit={verifyOtp} style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                <div className="otp-card-container">
+                  <div className="otp-card-title">Verify your number</div>
+                  <div className="otp-card-subtitle">
+                    Enter the 6-digit code we sent to<br/>
+                    <strong style={{ color: '#fff' }}>{form.identifier}</strong>
                   </div>
-                </div>
-                <button className="brave-theme-btn" style={{ width: '100%' }} type="submit" disabled={loading}>
-                  {loading ? "Verifying..." : "Verify and login"}
-                </button>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
-                  <button className="brave-theme-btn-ghost" style={{ width: '100%', marginTop: '0' }} type="button" onClick={requestOtp} disabled={loading}>
-                    Resend OTP
+
+                  <div className="otp-slots-container" onPaste={handleOtpPaste}>
+                    {[0, 1, 2, 3, 4, 5].map(index => (
+                      <input
+                        key={index}
+                        id={`otp-slot-${index}`}
+                        type="text"
+                        inputMode="numeric"
+                        className="otp-slot"
+                        value={form.otp[index] || ''}
+                        onChange={(e) => handleOtpChange(index, e.target.value)}
+                        onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                        autoComplete={index === 0 ? "one-time-code" : "off"}
+                        maxLength={1}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="otp-message-bubble">
+                    <div className="otp-message-icon">
+                      <Mail size={18} />
+                    </div>
+                    <div className="otp-message-text">
+                      MESSAGE - OTP<br/>
+                      A verification code was sent to your inbox.
+                    </div>
+                  </div>
+
+                  <button className="otp-action-btn" type="submit" disabled={loading || form.otp.length < 6}>
+                    {loading ? "Verifying..." : "Verify and login"}
                   </button>
-                  <button className="brave-theme-btn-ghost" style={{ width: '100%', marginTop: '0' }} type="button" onClick={resetFlow}>
-                    Change contact
-                  </button>
+
+                  <div style={{ display: 'flex', gap: '20px' }}>
+                    <button type="button" className="otp-resend-link" onClick={requestOtp} disabled={loading}>
+                      Resend code
+                    </button>
+                    <button type="button" className="otp-resend-link" onClick={resetFlow} disabled={loading}>
+                      Change contact
+                    </button>
+                  </div>
                 </div>
               </form>
             )}

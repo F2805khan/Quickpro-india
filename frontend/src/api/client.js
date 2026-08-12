@@ -178,14 +178,23 @@ export const api = {
     notifyBeautyChanged();
     return response;
   }),
-  getAgents: () => request("/admin/agents"),
+  getAgents: (query = "") => request(`/admin/agents${query}`),
+  getAgentById: (id) => request(`/admin/agents/${encodeURIComponent(id)}`),
   createAgent: (payload) =>
     request("/admin/agents", { method: "POST", body: JSON.stringify(payload) }),
   updateAgent: (id, payload) =>
     request(`/admin/agents/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) }),
   bulkUpdateAgents: (payload) =>
     request("/admin/agents/bulk", { method: "PUT", body: JSON.stringify(payload) }),
+  updateAgentStatus: (id, payload) =>
+    request(`/admin/agents/${encodeURIComponent(id)}/status`, { method: "POST", body: JSON.stringify(payload) }),
+  verifyAgent: (id, payload) =>
+    request(`/admin/agents/${encodeURIComponent(id)}/verify`, { method: "POST", body: JSON.stringify(payload) }),
   deleteAgent: (id) => request(`/admin/agents/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  getAgentDocuments: (id) => request(`/admin/agents/${encodeURIComponent(id)}/documents`),
+  viewAgentDocument: (id, fileId) => request(`/admin/agents/${encodeURIComponent(id)}/documents/${encodeURIComponent(fileId)}/view`),
+  getAgentJobs: (id) => request(`/admin/agents/${encodeURIComponent(id)}/jobs`),
+  getAgentStats: (id) => request(`/admin/agents/${encodeURIComponent(id)}/stats`),
   getAdminAlerts: () => request("/admin/alerts"),
   markAlertRead: (id) => request(`/admin/alerts/${encodeURIComponent(id)}/read`, { method: "PUT" }),
   getAuditLogs: () => request("/admin/audit-logs"),

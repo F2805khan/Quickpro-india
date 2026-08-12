@@ -1,5 +1,9 @@
 import express from "express";
-import { createAgent, deleteAgent, getAgents, updateAgent, bulkUpdateAgents } from "../controllers/agentController.js";
+import { 
+  createAgent, deleteAgent, getAgents, updateAgent, bulkUpdateAgents,
+  getAgentById, updateAgentStatus, verifyAgent, getAgentDocuments,
+  viewAgentDocument, getAgentJobs, getAgentStats
+} from "../controllers/agentController.js";
 import { getAlerts, markAlertRead } from "../controllers/alertController.js";
 import { getAuditLogs } from "../controllers/auditController.js";
 import {
@@ -67,8 +71,15 @@ router.put("/support/:id/reply", replyToSupportMessage);
 router.get("/agents", getAgents);
 router.post("/agents", createAgent);
 router.put("/agents/bulk", bulkUpdateAgents);
+router.get("/agents/:id", getAgentById);
 router.put("/agents/:id", updateAgent);
 router.delete("/agents/:id", deleteAgent);
+router.post("/agents/:id/status", updateAgentStatus);
+router.post("/agents/:id/verify", verifyAgent);
+router.get("/agents/:id/documents", getAgentDocuments);
+router.get("/agents/:id/documents/:fileId/view", viewAgentDocument);
+router.get("/agents/:id/jobs", getAgentJobs);
+router.get("/agents/:id/stats", getAgentStats);
 
 router.get("/alerts", getAlerts);
 router.put("/alerts/:id/read", markAlertRead);

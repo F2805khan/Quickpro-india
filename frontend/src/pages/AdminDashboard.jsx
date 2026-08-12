@@ -50,7 +50,8 @@ import {
 import { api } from "../api/client.js";
 import socket from "../api/socket.js";
 import { categories } from "../data/services.js";
-import DatabaseManager from "../components/DatabaseManager.jsx";
+import BookingStatusDrawer from "../components/BookingStatusDrawer.jsx";
+import AgentManagement from "../components/Admin/AgentManagement.jsx";
 import WhatsAppManager from "../components/WhatsAppManager.jsx";
 
 const blankService = {
@@ -3180,7 +3181,7 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
             {activeTab === "services" && renderServices()}
             {activeTab === "beauty" && renderBeauty()}
             {activeTab === "users" && renderUsers()}
-            {activeTab === "agents" && renderAgents()}
+            {activeTab === "agents" && <AgentManagement />}
             {activeTab === "audit" && renderAuditLogs()}
             {activeTab === "support" && renderSupport()}
             {activeTab === "whatsapp" && <WhatsAppManager />}

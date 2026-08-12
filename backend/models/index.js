@@ -1,4 +1,6 @@
 import Agent from "./Agent.js";
+import AgentStats from "./AgentStats.js";
+import File from "./File.js";
 import AdminAlert from "./AdminAlert.js";
 import AuditLog from "./AuditLog.js";
 import AuthEvent from "./AuthEvent.js";
@@ -32,4 +34,4 @@ import Complaint from "./Complaint.js";
 // User.hasMany(Booking, { foreignKey: "userId" });
 // User.hasMany(SupportMessage, { foreignKey: "userId" });
 
-export { Agent, AdminAlert, AuditLog, AuthEvent, AuthMethodSetting, BeautyArtist, Booking, Coupon, Payment, PaymentMethodSetting, Service, SupportMessage, User, Provider, Review, ServiceBundle, Invoice, ProviderAvailability, ProviderServiceArea, Earning, Message, ProviderLocation, Subscription, Complaint };
+export { Agent, AgentStats, File, AdminAlert, AuditLog, AuthEvent, AuthMethodSetting, BeautyArtist, Booking, Coupon, Payment, PaymentMethodSetting, Service, SupportMessage, User, Provider, Review, ServiceBundle, Invoice, ProviderAvailability, ProviderServiceArea, Earning, Message, ProviderLocation, Subscription, Complaint };
