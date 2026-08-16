@@ -13,19 +13,19 @@ import {
   MessageCircle,
   Phone,
   Sparkles,
-  UserRound
+  UserRound,
+  LogOut
 } from "lucide-react";
 import BookingStatusDrawer from "../components/BookingStatusDrawer.jsx";
 import ProfileHistorySection from "../components/ProfileHistorySection.jsx";
 import { toast } from "../utils/notifications.js";
-import { Skeleton } from "boneyard-js/react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { api } from "../api/client.js";
 import socket from "../api/socket.js";
 import { getCachedUserProfile, getUserProfile, mergeProfiles, onProfileChanged, profileDefaults, publishProfileUpdate, saveUserProfile } from "../data/profileStore.js";
 import { getCachedUserBookings, getUserBookings } from "../data/bookingStore.js";
-import { displayUserName, isPrivilegedUser, onProfileUpdated, onSessionChanged } from "../data/sessionStore.js";
+import { displayUserName, isPrivilegedUser, onProfileUpdated, onSessionChanged, logoutSession } from "../data/sessionStore.js";
 import { isActiveBookingStatus } from "../utils/bookingTracking.js";
 import { ADMIN_PANEL_URL } from "../config/urls.js";
 
@@ -233,11 +233,7 @@ export function ProfileLoadingShell() {
 }
 
 export function ProfileSkeletonCapture() {
-  return (
-    <Skeleton name="profile-page" loading={false} fixture={<ProfileLoadingShell />}>
-      <ProfileLoadingShell />
-    </Skeleton>
-  );
+  return <ProfileLoadingShell />;
 }
 
 function Profile({ dashboardLayout = false }) {
@@ -271,6 +267,21 @@ function Profile({ dashboardLayout = false }) {
   const addressSectionRef = useRef(null);
   const reverseLookupTimer = useRef(null);
   const reverseLookupId = useRef(0);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logoutSession();
+      toast.success("Logged out successfully.");
+      navigate("?login=true", { replace: true });
+    } catch {
+      toast.error("Could not log out.");
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -371,6 +382,11 @@ function Profile({ dashboardLayout = false }) {
           b.bookingId === updatedBooking.bookingId ? updatedBooking : b
         );
       });
+      
+      // Update the active tracking drawer if it's currently open for this booking
+      setStatusBooking((current) => 
+        current?.bookingId === updatedBooking.bookingId ? updatedBooking : current
+      );
     };
 
     socket.on("booking_updated", handleBookingUpdated);
@@ -685,17 +701,7 @@ function Profile({ dashboardLayout = false }) {
 
 
   if (loading) {
-    return (
-      <Skeleton
-        name="profile-page"
-        loading
-        animate="shimmer"
-        transition
-        fixture={<ProfileLoadingShell />}
-      >
-        <ProfileLoadingShell />
-      </Skeleton>
-    );
+    return <ProfileLoadingShell />;
   }
 
   const savedAccount = profile || profileDefaults(user);
@@ -752,6 +758,9 @@ function Profile({ dashboardLayout = false }) {
           <button className={profileSection === "overview" ? "active" : ""} type="button" onClick={() => setProfileSection("overview")}><UserRound size={17} /> Profile</button>
           <button className={profileSection === "history" ? "active" : ""} type="button" onClick={() => setProfileSection("history")}><History size={17} /> History</button>
           <button className={profileSection === "support" ? "active" : ""} type="button" onClick={() => setProfileSection("support")}><MessageCircle size={17} /> Support</button>
+          <button type="button" onClick={handleLogout} disabled={loggingOut} style={{ color: "var(--error)", marginTop: "auto" }}>
+            <LogOut size={17} /> {loggingOut ? "Logging out..." : "Logout"}
+          </button>
         </aside>
       )}
 

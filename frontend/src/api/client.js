@@ -144,6 +144,8 @@ export const api = {
   getAuthMethods,
   googleLogin: (payload) =>
     request("/auth/google", { method: "POST", body: JSON.stringify(payload) }),
+  firebasePhoneLogin: (payload) =>
+    request("/auth/firebase-phone", { method: "POST", body: JSON.stringify(payload) }),
   getServices: (query = "") => request(`/services${query}`),
   getServiceCategories: () => request("/services/categories"),
   getServiceById: (id) => request(`/services/${encodeURIComponent(id)}`),
@@ -191,6 +193,17 @@ export const api = {
   verifyAgent: (id, payload) =>
     request(`/admin/agents/${encodeURIComponent(id)}/verify`, { method: "POST", body: JSON.stringify(payload) }),
   deleteAgent: (id) => request(`/admin/agents/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  uploadAgentDocument: async (id, formData) => {
+    const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
+    const response = await fetch(`${API_URL}/admin/agents/${encodeURIComponent(id)}/documents`, {
+      method: "POST",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: formData
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || "Upload failed");
+    return data;
+  },
   getAgentDocuments: (id) => request(`/admin/agents/${encodeURIComponent(id)}/documents`),
   viewAgentDocument: (id, fileId) => request(`/admin/agents/${encodeURIComponent(id)}/documents/${encodeURIComponent(fileId)}/view`),
   getAgentJobs: (id) => request(`/admin/agents/${encodeURIComponent(id)}/jobs`),

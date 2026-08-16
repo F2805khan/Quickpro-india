@@ -183,6 +183,25 @@ export const updateBookingStatus = asyncHandler(async (req, res) => {
     throw new Error("Invalid booking status");
   }
 
+  if (nextStatus === "Completed" && booking.providerId && booking.bookingStatus !== "Completed") {
+    const Agent = (await import("../models/index.js")).Agent;
+    const AgentStats = (await import("../models/index.js")).AgentStats;
+    try {
+      const agent = await Agent.findByPk(booking.providerId);
+      if (agent) {
+        await agent.update({ completedJobsCount: (agent.completedJobsCount || 0) + 1 });
+      }
+      const stats = await AgentStats.findByPk(booking.providerId);
+      if (stats) {
+        await stats.update({ completedJobs: (stats.completedJobs || 0) + 1, lastJobAt: new Date() });
+      } else {
+        await AgentStats.create({ id: booking.providerId, completedJobs: 1, totalJobs: 1, lastJobAt: new Date() });
+      }
+    } catch (e) {
+      console.error("Failed to update agent stats on booking completion", e);
+    }
+  }
+
   booking.bookingStatus = nextStatus;
   await booking.save();
   await updateAcceptedBookingsCSV().catch(err => console.error("CSV update failed", err));
@@ -251,7 +270,7 @@ export const assignProfessional = asyncHandler(async (req, res) => {
   booking.professionalPhone = req.body.professionalPhone || booking.professionalPhone || "99988877766";
   booking.professionalPhoto = req.body.professionalPhoto || booking.professionalPhoto;
   booking.estimatedArrival = req.body.estimatedArrival || booking.estimatedArrival;
-  booking.bookingStatus = "Professional Assigned";
+  booking.bookingStatus = "Assigned";
   await booking.save();
   await updateAcceptedBookingsCSV().catch(err => console.error("CSV update failed", err));
 

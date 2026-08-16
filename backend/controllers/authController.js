@@ -691,6 +691,71 @@ export const googleLogin = asyncHandler(async (req, res) => {
   });
 });
 
+export const firebasePhoneLogin = asyncHandler(async (req, res) => {
+  const { idToken, mode = "login" } = req.body;
+
+  if (!idToken) {
+    res.status(400);
+    throw new Error("Firebase phone login token is required");
+  }
+
+  let decodedToken;
+  try {
+    decodedToken = await verifyFirebaseIdToken(idToken);
+  } catch (error) {
+    console.error("Phone auth validation failed:", error.message);
+    res.status(401);
+    throw new Error("Invalid or expired Firebase login. Please try again.");
+  }
+
+  if (decodedToken.firebase?.sign_in_provider !== "phone") {
+    res.status(401);
+    throw new Error("Use a phone number to continue");
+  }
+
+  const phone = decodedToken.phone_number;
+  if (!phone) {
+    res.status(401);
+    throw new Error("Phone login requires a valid phone number");
+  }
+
+  let user = await User.findOne({ where: { phone } });
+  const isSignup = !user;
+
+  if (!user && mode !== "signup") {
+    res.status(404);
+    throw new Error("Account not found. Please sign up first.");
+  }
+
+  await assertAuthMethodEnabled("otp", isSignup ? "signup" : "login");
+
+  if (!user) {
+    user = await User.create({
+      name: "Quickpro India Customer",
+      email: null,
+      phone,
+      address: "",
+      authProvider: "otp"
+    });
+  } else {
+    user.authProvider = "otp";
+    if (!user.phone) user.phone = phone;
+    await user.save();
+  }
+
+  await recordAuthEvent({
+    req,
+    user,
+    eventType: isSignup ? "signup" : "login",
+    provider: "otp"
+  });
+
+  res.status(isSignup ? 201 : 200).json({
+    user: publicUser(user),
+    token: createToken(user._id)
+  });
+});
+
 export const getAuthMethods = asyncHandler(async (req, res) => {
   const methods = await getAuthMethodSettings();
   res.json(methods);

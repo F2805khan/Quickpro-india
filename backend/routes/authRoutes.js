@@ -9,7 +9,8 @@ import {
   updatePassword,
   updateProfile,
   verifyOtp,
-  getAuthMethods
+  getAuthMethods,
+  firebasePhoneLogin
 } from "../controllers/authController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -25,5 +26,6 @@ router.post("/request-otp", requestOtp);
 router.post("/reset-password", resetPassword);
 router.post("/verify-otp", verifyOtp);
 router.post("/google", googleLogin);
+router.post("/firebase-phone", firebasePhoneLogin);
 
 export default router;

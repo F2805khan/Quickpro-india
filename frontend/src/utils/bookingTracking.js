@@ -5,7 +5,7 @@ export const TRACKING_STEPS = [
     hint: "Slot reserved and payment recorded."
   },
   {
-    key: "Professional Assigned",
+    key: "Assigned",
     label: "Professional assigned",
     hint: "Verified expert matched to your visit."
   },
@@ -26,7 +26,7 @@ export const TRACKING_STEPS = [
   }
 ];
 
-export const LIVE_SIMULATION_STEPS = ["Confirmed", "Professional Assigned", "On The Way"];
+export const LIVE_SIMULATION_STEPS = ["Confirmed", "Assigned", "On The Way"];
 
 export const normalizeBookingStatus = (status = "Confirmed") => {
   if (status === "Booking Confirmed") return "Confirmed";

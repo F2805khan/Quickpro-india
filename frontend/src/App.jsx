@@ -1,15 +1,11 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
-import { useGSAP } from "@gsap/react";
-import { gsap } from "./gsap-setup.js";
-import { Flip } from "gsap/all";
 import { toast } from "./utils/notifications.js";
 import CouponApplyBox from "./components/CouponApplyBox.jsx";
-import GlobalParallax from "./components/GlobalParallax.jsx";
 import {
   ArrowRight, BadgeCheck, Banknote, Bell, CalendarDays, Check, CheckCircle2, ChevronDown, ChevronLeft,
   ChevronRight, Clock3, CreditCard, Droplets, Flower2, Gauge, Home, Instagram,
-  Landmark, LockKeyhole, LogOut, Mail, MapPin, Menu, MessageCircle, Paintbrush, Phone, Refrigerator,
+  Landmark, LockKeyhole, Mail, MapPin, Menu, MessageCircle, Paintbrush, Phone, Refrigerator,
   PlayCircle, ScanLine, Scissors, ShieldCheck, ShoppingCart, Sparkles, Star, UserRound, UsersRound,
   WalletCards, WandSparkles, WashingMachine, Wind, Wrench, X, Zap, Car
 } from "lucide-react";
@@ -20,7 +16,7 @@ import { api } from "./api/client.js";
 import { getUserProfile, onProfileChanged } from "./data/profileStore.js";
 import { saveUserBooking } from "./data/bookingStore.js";
 import { getBestCustomerReviews, getCustomerReviews, saveCustomerReview } from "./data/reviewStore.js";
-import { displayUserName, getCurrentSessionUser, isPrivilegedUser, logoutSession, onProfileUpdated, onSessionChanged } from "./data/sessionStore.js";
+import { displayUserName, getCurrentSessionUser, isPrivilegedUser, onProfileUpdated, onSessionChanged } from "./data/sessionStore.js";
 import { ADMIN_PANEL_URL } from "./config/urls.js";
 
 const LoginSignup = lazy(() => import("./pages/LoginSignup.jsx"));
@@ -336,7 +332,6 @@ function Logo() {
 function Navbar({ cartCount = 0 }) {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState(null);
-  const [loggingOut, setLoggingOut] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -355,21 +350,6 @@ function Navbar({ cartCount = 0 }) {
       unsubProfile();
     };
   }, []);
-
-  const logout = async () => {
-    if (loggingOut) return;
-    setLoggingOut(true);
-    try {
-      await logoutSession();
-      setOpen(false);
-      toast.success("Logged out successfully.");
-      navigate("?login=true", { replace: true });
-    } catch {
-      toast.error("Could not log out.");
-    } finally {
-      setLoggingOut(false);
-    }
-  };
 
   return (
     <header className="site-nav">
@@ -392,11 +372,6 @@ function Navbar({ cartCount = 0 }) {
               <CalendarDays size={15} /> Booking history
             </Link>
           )}
-          {user && (
-            <button className="mobile-account-link mobile-logout-link" type="button" onClick={logout} disabled={loggingOut}>
-              <LogOut size={15} /> {loggingOut ? "Logging out..." : "Logout"}
-            </button>
-          )}
         </nav>
         <div className="nav-actions">
           {user ? (
@@ -407,12 +382,6 @@ function Navbar({ cartCount = 0 }) {
             <Link className="btn btn-primary compact" to="?login=true" style={{ background: "var(--accent)", borderRadius: "20px", minHeight: "36px", fontSize: "12px" }}>
               Login / Signup
             </Link>
-          )}
-
-          {user && (
-            <button className="icon-button danger" type="button" aria-label={loggingOut ? "Logging out" : "Logout"} title="Logout" onClick={logout} disabled={loggingOut}>
-              <LogOut size={18} />
-            </button>
           )}
 
           <Link className="icon-button cart-icon-button" aria-label={`Cart ${cartCount ? `(${cartCount})` : ""}`} to="/cart">
@@ -483,52 +452,6 @@ function PricingCards({ condensed = false }) {
 function HomePage({ onBookService, services = fallbackServices.map(normalizeService) }) {
   const sliderRef = useRef(null);
   const container = useRef(null);
-
-  useGSAP(() => {
-    // Scramble text effect on hero
-    gsap.to(".hero-line-accent", {
-      duration: 1.5,
-      scrambleText: { text: "Handled.", chars: "lowerCase", revealDelay: 0.5, tweenLength: false },
-      ease: "power2.out"
-    });
-
-    // Scroll animation for sections
-    const sections = gsap.utils.toArray(".section");
-    sections.forEach((sec) => {
-      gsap.fromTo(sec, 
-        { opacity: 0, y: 50 },
-        { 
-          opacity: 1, 
-          y: 0, 
-          duration: 1,
-          scrollTrigger: {
-            trigger: sec,
-            start: "top 80%",
-            toggleActions: "play none none reverse"
-          }
-        }
-      );
-    });
-
-    // Full-screen hero art animation on page load
-    const heroArt = document.querySelector(".hero-art");
-    if (heroArt) {
-      // Small delay to ensure initial layout is rendered
-      setTimeout(() => {
-        const state = Flip.getState(heroArt);
-        heroArt.classList.add("fullscreen-hero-art");
-        Flip.from(state, {
-          duration: 1.8,
-          ease: "power3.inOut",
-          absolute: true,
-          onComplete: () => {
-            gsap.to(heroArt, { filter: "brightness(0.5)", duration: 1 });
-            gsap.to(".hero-copy", { color: "#fff", position: "relative", zIndex: 10, duration: 1 });
-          }
-        });
-      }, 500);
-    }
-  }, { scope: container });
 
   const scrollSlider = (direction) => {
     if (sliderRef.current) {
@@ -1400,7 +1323,6 @@ function App() {
 
   return (
     <>
-      <GlobalParallax />
       {showSplash && <SplashScreen onFinished={onSplashFinished} />}
       <Navbar cartCount={cartCount} />
       <div className="route-stage" key={location.pathname}>

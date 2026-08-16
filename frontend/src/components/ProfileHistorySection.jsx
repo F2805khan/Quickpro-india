@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Radio, Search, Snowflake, Sparkles, Wrench, Zap, Star, Receipt, AlertTriangle } from "lucide-react";
 import { isActiveBookingStatus } from "../utils/bookingTracking.js";
 import ReviewModal from "./ReviewModal.jsx";
-import { toast } from "react-hot-toast";
 
 const getServiceIcon = (serviceName = "") => {
   const name = serviceName.toLowerCase();
@@ -179,7 +178,7 @@ function ProfileHistorySection({ bookings = [], onSelectBooking }) {
                                   const reason = window.prompt("Please briefly describe the issue with this booking:");
                                   if (reason) {
                                     // In prod, call API to submit complaint
-                                    toast.success("Complaint filed successfully. Our support team will contact you shortly.");
+                                    alert("Complaint filed successfully. Our support team will contact you shortly.");
                                   }
                                 }}
                                 style={{ color: "var(--error)", display: "flex", alignItems: "center", gap: "4px" }}

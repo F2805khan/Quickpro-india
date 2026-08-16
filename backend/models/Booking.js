@@ -2,7 +2,7 @@ import { SupabaseModel } from "./SupabaseModel.js";
 
 export const bookingStatuses = [
   "Confirmed",
-  "Professional Assigned",
+  "Assigned",
   "On The Way",
   "Service In Progress",
   "Completed",

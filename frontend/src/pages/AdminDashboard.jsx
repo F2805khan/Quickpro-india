@@ -52,7 +52,9 @@ import socket from "../api/socket.js";
 import { categories } from "../data/services.js";
 import BookingStatusDrawer from "../components/BookingStatusDrawer.jsx";
 import AgentManagement from "../components/Admin/AgentManagement.jsx";
+import AgentRegistrationForm from "../components/Admin/AgentRegistrationForm.jsx";
 import WhatsAppManager from "../components/WhatsAppManager.jsx";
+import DatabaseManager from "../components/DatabaseManager.jsx";
 
 const blankService = {
   title: "",
@@ -279,8 +281,17 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
   const [agentsList, setAgentsList] = useState([]);
   const [selectedAgentIds, setSelectedAgentIds] = useState([]);
   const [agentForm, setAgentForm] = useState({ 
-    name: "", phone: "", photo: "", status: "offline", 
-    verification_status: "Pending Verification", documentation_url: "", kyc_required: false, skills: "", rating: 0, completed_jobs_count: 0, earnings: 0, latitude: "", longitude: "" 
+    name: "", phone: "", email: "", dob: "", gender: "Male",
+    address: "", pincode: "", photo: "",
+    aadhaar_number: "", pan_number: "",
+    service_category: "Plumber", sub_services: "", experience_years: 0,
+    languages: "English, Hindi", skills: "",
+    service_area_pincodes: "", availability: "Full-time", job_radius_km: 10,
+    bank_account: "", ifsc_code: "", account_holder_name: "", upi_id: "",
+    vehicle_type: "None", vehicle_number: "",
+    accept_terms: false, consent_background_check: false,
+    emergency_contact_name: "", emergency_contact_phone: "",
+    status: "offline", kyc_required: true,
   });
   const [showAgentForm, setShowAgentForm] = useState(false);
   const [editingAgentId, setEditingAgentId] = useState(null);
@@ -1358,7 +1369,7 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
           <select value={bookingStatusFilter} onChange={(e) => setBookingStatusFilter(e.target.value)}>
             <option value="All">All Statuses</option>
             <option value="Confirmed">Confirmed (New)</option>
-            <option value="Professional Assigned">Professional Assigned</option>
+            <option value="Assigned">Professional Assigned</option>
             <option value="On The Way">On The Way</option>
             <option value="Service In Progress">Service In Progress</option>
             <option value="Completed">Completed</option>
@@ -1489,7 +1500,7 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
                                     className="brave-input"
                                   >
                                     <option value="Confirmed">Confirmed</option>
-                                    <option value="Professional Assigned">Professional Assigned</option>
+                                    <option value="Assigned">Professional Assigned</option>
                                     <option value="On The Way">On The Way</option>
                                     <option value="Service In Progress">Service In Progress</option>
                                     <option value="Completed">Completed</option>
@@ -1516,9 +1527,9 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
                                       }}
                                     >
                                       <option value="">-- Choose an agent --</option>
-                                      {agentsList.map(agent => (
+                                      {agentsList.filter(agent => agent.isOnline).map(agent => (
                                         <option key={agent._id || agent.id} value={agent._id || agent.id}>
-                                          {agent.name} {agent.status === "online" ? "🟢" : agent.status === "working" ? "🔵" : "🔴"}
+                                          {agent.name} 🟢
                                         </option>
                                       ))}
                                     </select>
@@ -2171,22 +2182,9 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
   );
 
   const renderAgents = () => {
-    const submitAgent = async (e) => {
-      e.preventDefault();
+    const submitAgent = async (payload) => {
       setAgentSaving(true);
       try {
-        const payload = {
-          ...agentForm,
-          rating: Number(agentForm.rating) || 0,
-          completed_jobs_count: Number(agentForm.completed_jobs_count) || 0,
-          earnings: Number(agentForm.earnings) || 0,
-          latitude: agentForm.latitude ? Number(agentForm.latitude) : null,
-          longitude: agentForm.longitude ? Number(agentForm.longitude) : null,
-          skills: typeof agentForm.skills === 'string' 
-            ? agentForm.skills.split(',').map(s => s.trim()).filter(Boolean) 
-            : agentForm.skills
-        };
-
         if (editingAgentId) {
           await api.updateAgent(editingAgentId, payload);
           toast.success("Agent updated successfully");
@@ -2196,10 +2194,6 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
         }
         await loadAgents();
         setShowAgentForm(false);
-        setAgentForm({ 
-          name: "", phone: "", photo: "", status: "offline",
-          verification_status: "Pending Verification", skills: "", rating: 0, completed_jobs_count: 0, earnings: 0, latitude: "", longitude: ""
-        });
         setEditingAgentId(null);
       } catch (err) {
         toast.error(err.message || "Failed to save agent");
@@ -2207,6 +2201,8 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
         setAgentSaving(false);
       }
     };
+
+
 
     const handleDeleteAgent = async (id) => {
       if (!window.confirm("Are you sure you want to delete this agent?")) return;
@@ -2223,21 +2219,7 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
     };
 
     const editAgent = (agent) => {
-      setAgentForm({
-        name: agent.name || "",
-        phone: agent.phone || "",
-        photo: agent.photo || "",
-        status: agent.status || "offline",
-        verification_status: agent.verification_status || "Pending Verification",
-        documentation_url: agent.documentation_url || "",
-        kyc_required: agent.kyc_required || false,
-        skills: Array.isArray(agent.skills) ? agent.skills.join(", ") : (agent.skills || ""),
-        rating: agent.rating || 0,
-        completed_jobs_count: agent.completed_jobs_count || 0,
-        earnings: agent.earnings || 0,
-        latitude: agent.latitude || "",
-        longitude: agent.longitude || ""
-      });
+      setAgentForm(agent);
       setEditingAgentId(agent._id || agent.id);
       setShowAgentForm(true);
     };
@@ -2312,76 +2294,12 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
             <h3 style={{ marginTop: 0, marginBottom: '20px', color: 'var(--accent-ink)' }}>
               {editingAgentId ? "Edit Agent" : "Add New Agent"}
             </h3>
-            <form className="admin-form" onSubmit={submitAgent}>
-              <div className="admin-form-grid">
-                <label>
-                  Full Name *
-                  <input required value={agentForm.name} onChange={(e) => setAgentForm({ ...agentForm, name: e.target.value })} placeholder="John Doe" />
-                </label>
-                <label>
-                  Phone Number
-                  <input value={agentForm.phone} onChange={(e) => setAgentForm({ ...agentForm, phone: e.target.value })} placeholder="9998887776" />
-                </label>
-                <label>
-                  Photo URL
-                  <input value={agentForm.photo} onChange={(e) => setAgentForm({ ...agentForm, photo: e.target.value })} placeholder="https://..." />
-                </label>
-                <label>
-                  Status
-                  <select value={agentForm.status} onChange={(e) => setAgentForm({ ...agentForm, status: e.target.value })}>
-                    <option value="online">Online (Ready to work)</option>
-                    <option value="working">Working (Assigned)</option>
-                    <option value="offline">Offline</option>
-                  </select>
-                </label>
-                <label>
-                  Verification Status
-                  <select value={agentForm.verification_status} onChange={(e) => setAgentForm({ ...agentForm, verification_status: e.target.value })}>
-                    <option value="Pending Verification">Pending Verification</option>
-                    <option value="Verified">Verified</option>
-                    <option value="Rejected">Rejected</option>
-                  </select>
-                </label>
-                <label>
-                  Documentation URL
-                  <input value={agentForm.documentation_url || ""} onChange={(e) => setAgentForm({ ...agentForm, documentation_url: e.target.value })} placeholder="https://link-to-id..." />
-                </label>
-                <label className="admin-toggle-field" style={{ alignSelf: 'center', marginTop: '14px' }}>
-                  <span>KYC Required</span>
-                  <input type="checkbox" checked={agentForm.kyc_required || false} onChange={(e) => setAgentForm({ ...agentForm, kyc_required: e.target.checked })} />
-                </label>
-                <label>
-                  Skills (comma separated)
-                  <input value={agentForm.skills} onChange={(e) => setAgentForm({ ...agentForm, skills: e.target.value })} placeholder="Plumbing, Cleaning" />
-                </label>
-                <label>
-                  Rating (e.g. 4.8)
-                  <input type="number" step="0.1" max="5" value={agentForm.rating} onChange={(e) => setAgentForm({ ...agentForm, rating: e.target.value })} />
-                </label>
-                <label>
-                  Completed Jobs
-                  <input type="number" value={agentForm.completed_jobs_count} onChange={(e) => setAgentForm({ ...agentForm, completed_jobs_count: e.target.value })} />
-                </label>
-                <label>
-                  Total Earnings (INR)
-                  <input type="number" value={agentForm.earnings} onChange={(e) => setAgentForm({ ...agentForm, earnings: e.target.value })} />
-                </label>
-                <label>
-                  Location (Latitude)
-                  <input type="text" value={agentForm.latitude} onChange={(e) => setAgentForm({ ...agentForm, latitude: e.target.value })} placeholder="e.g. 12.9716" />
-                </label>
-                <label>
-                  Location (Longitude)
-                  <input type="text" value={agentForm.longitude} onChange={(e) => setAgentForm({ ...agentForm, longitude: e.target.value })} placeholder="e.g. 77.5946" />
-                </label>
-              </div>
-              <div className="admin-form-actions" style={{ marginTop: '20px' }}>
-                <button type="button" className="btn btn-ghost" onClick={() => setShowAgentForm(false)}>Cancel</button>
-                <button type="submit" className="brave-theme-btn" disabled={agentSaving}>
-                  {agentSaving ? "Saving..." : editingAgentId ? "Update Agent" : "Add Agent"}
-                </button>
-              </div>
-            </form>
+            <AgentRegistrationForm 
+              initialData={agentForm} 
+              onSave={submitAgent} 
+              onCancel={() => setShowAgentForm(false)} 
+              saving={agentSaving} 
+            />
           </div>
         )}
 

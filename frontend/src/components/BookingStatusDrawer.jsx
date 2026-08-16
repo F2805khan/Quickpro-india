@@ -35,33 +35,12 @@ function BookingStatusDrawer({ booking, liveMode = false, onCancel, onClose }) {
   useEffect(() => {
     if (!booking || !liveMode || !isActiveBookingStatus(displayStatus)) return;
 
-    const startIndex = LIVE_SIMULATION_STEPS.indexOf(normalizeBookingStatus(booking.bookingStatus));
-    let stepIndex = startIndex >= 0 ? startIndex : 0;
-
-    const advance = setInterval(() => {
-      const nextStepIndex = stepIndex + 1;
-      if (nextStepIndex >= LIVE_SIMULATION_STEPS.length) {
-        clearInterval(advance);
-        return;
-      }
-
-      const nextStep = LIVE_SIMULATION_STEPS[nextStepIndex];
-      // Do not advance past Confirmed if agent is not assigned
-      if (nextStep === "Professional Assigned" && !booking?.professionalName) {
-        return;
-      }
-
-      stepIndex += 1;
-      setDisplayStatus(LIVE_SIMULATION_STEPS[stepIndex]);
-      setEtaMinutes((current) => Math.max(6, current - 5));
-    }, 3200);
-
+    // Simulate ETA ticking down purely for UI effect
     const etaTick = setInterval(() => {
       setEtaMinutes((current) => (current > 6 ? current - 1 : current));
     }, 45000);
 
     return () => {
-      clearInterval(advance);
       clearInterval(etaTick);
     };
   }, [booking?.bookingId, liveMode]);

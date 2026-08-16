@@ -107,64 +107,87 @@ const AgentManagement = () => {
         </div>
       </div>
 
-      <div className="filters-bar" style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        <div className="search-box" style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
-          <Search size={18} style={{ position: 'absolute', left: '10px', top: '10px', color: '#666' }} />
+      <div className="filters-bar" style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center', background: '#fff', padding: '16px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+        <div className="search-box" style={{ flex: '1 1 300px', position: 'relative' }}>
+          <Search size={18} style={{ position: 'absolute', left: '14px', top: '14px', color: '#9ca3af' }} />
           <input 
             type="text" 
             placeholder="Search agents by name or phone..." 
             className="input-field"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ paddingLeft: '35px', width: '100%' }}
+            style={{ 
+              padding: '12px 16px 12px 42px', 
+              width: '100%', 
+              background: '#f9fafb', 
+              border: '1px solid #e5e7eb', 
+              borderRadius: '8px', 
+              fontSize: '14px',
+              outline: 'none',
+              transition: 'border-color 0.2s'
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#8b5cf6'}
+            onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
           />
         </div>
         
-        <select className="input-field" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="All">All Status</option>
-          <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
-          <option value="suspended">Suspended</option>
-          <option value="blocked">Blocked</option>
-        </select>
+        <div style={{ display: 'flex', gap: '12px', flex: '0 1 auto', minWidth: '300px' }}>
+          <select 
+            className="input-field" 
+            value={statusFilter} 
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{ flex: 1, padding: '12px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', cursor: 'pointer' }}
+          >
+            <option value="All">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="suspended">Suspended</option>
+            <option value="blocked">Blocked</option>
+          </select>
 
-        <select className="input-field" value={verificationFilter} onChange={(e) => setVerificationFilter(e.target.value)}>
-          <option value="All">All Verification</option>
-          <option value="not_submitted">Not Submitted</option>
-          <option value="under_review">Under Review</option>
-          <option value="verified">Verified</option>
-          <option value="rejected">Rejected</option>
-        </select>
+          <select 
+            className="input-field" 
+            value={verificationFilter} 
+            onChange={(e) => setVerificationFilter(e.target.value)}
+            style={{ flex: 1, padding: '12px 16px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', cursor: 'pointer' }}
+          >
+            <option value="All">All Verification</option>
+            <option value="not_submitted">Not Submitted</option>
+            <option value="under_review">Under Review</option>
+            <option value="verified">Verified</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
       </div>
 
-      <div className="table-responsive" style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+      <div className="table-responsive" style={{ background: '#fff', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
         <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid #eee', textAlign: 'left' }}>
-              <th style={{ padding: '15px' }}><input type="checkbox" onChange={handleSelectAll} checked={agents.length > 0 && selectedRows.length === agents.length} /></th>
-              <th style={{ padding: '15px' }}>Agent</th>
-              <th style={{ padding: '15px' }}>Contact</th>
-              <th style={{ padding: '15px' }}>Status</th>
-              <th style={{ padding: '15px' }}>KYC</th>
-              <th style={{ padding: '15px' }}>Jobs</th>
-              <th style={{ padding: '15px', textAlign: 'right' }}>Actions</th>
+          <thead style={{ background: '#f8fafc' }}>
+            <tr style={{ borderBottom: '1px solid #e5e7eb', textAlign: 'left', color: '#4b5563', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <th style={{ padding: '16px', width: '40px' }}><input type="checkbox" onChange={handleSelectAll} checked={agents.length > 0 && selectedRows.length === agents.length} style={{ cursor: 'pointer' }} /></th>
+              <th style={{ padding: '16px', fontWeight: '600' }}>Agent</th>
+              <th style={{ padding: '16px', fontWeight: '600' }}>Contact</th>
+              <th style={{ padding: '16px', fontWeight: '600' }}>Status</th>
+              <th style={{ padding: '16px', fontWeight: '600' }}>KYC</th>
+              <th style={{ padding: '16px', fontWeight: '600' }}>Jobs</th>
+              <th style={{ padding: '16px', fontWeight: '600', textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px' }}>Loading agents...</td></tr>
+              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>Loading agents...</td></tr>
             ) : agents.length === 0 ? (
-              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px' }}>No agents found matching criteria.</td></tr>
+              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>No agents found matching criteria.</td></tr>
             ) : (
               agents.map(agent => (
-                <tr key={agent._id || agent.id} style={{ borderBottom: '1px solid #eee', transition: 'background 0.2s', cursor: 'pointer' }} onClick={(e) => {
+                <tr key={agent._id || agent.id} style={{ borderBottom: '1px solid #f3f4f6', transition: 'background-color 0.2s', cursor: 'pointer' }} onClick={(e) => {
                   if (e.target.type !== 'checkbox' && e.target.tagName !== 'BUTTON') {
                     setSelectedAgentId(agent._id || agent.id);
                   }
-                }} className="hover-row">
-                  <td style={{ padding: '15px' }}>
-                    <input type="checkbox" checked={selectedRows.includes(agent._id || agent.id)} onChange={() => handleRowSelect(agent._id || agent.id)} />
+                }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                  <td style={{ padding: '16px' }}>
+                    <input type="checkbox" checked={selectedRows.includes(agent._id || agent.id)} onChange={() => handleRowSelect(agent._id || agent.id)} style={{ cursor: 'pointer' }} />
                   </td>
                   <td style={{ padding: '15px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -179,18 +202,18 @@ const AgentManagement = () => {
                   </td>
                   <td style={{ padding: '15px', color: '#555' }}>{agent.phone || agent.email || "N/A"}</td>
                   <td style={{ padding: '15px' }}>
-                    <span className={`status-badge ${agent.status}`} style={{
+                    <span className={`status-badge ${agent.status || 'unknown'}`} style={{
                       padding: '4px 8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: '500',
                       background: agent.status === 'approved' ? '#dcfce7' : agent.status === 'pending' ? '#fef9c3' : agent.status === 'rejected' ? '#fee2e2' : '#f1f5f9',
                       color: agent.status === 'approved' ? '#166534' : agent.status === 'pending' ? '#854d0e' : agent.status === 'rejected' ? '#991b1b' : '#334155'
                     }}>
-                      {agent.status.toUpperCase()}
+                      {(agent.status || 'unknown').toUpperCase()}
                     </span>
                   </td>
                   <td style={{ padding: '15px' }}>
                     <span style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px', color: agent.verificationStatus === 'verified' ? '#166534' : '#854d0e' }}>
                       {agent.verificationStatus === 'verified' ? <ShieldAlert size={14} /> : <AlertTriangle size={14} />}
-                      {agent.verificationStatus?.replace('_', ' ').toUpperCase() || 'NOT SUBMITTED'}
+                      {(agent.verificationStatus || 'NOT SUBMITTED').replace('_', ' ').toUpperCase()}
                     </span>
                   </td>
                   <td style={{ padding: '15px' }}>

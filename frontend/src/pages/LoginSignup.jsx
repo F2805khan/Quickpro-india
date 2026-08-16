@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "../utils/notifications.js";
 import { AlertCircle, ArrowLeft, CalendarDays, Mail, Phone, ShieldCheck, Sparkles, X } from "lucide-react";
-import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, signOut, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import { api } from "../api/client.js";
 import { auth } from "../components/firebase.js";
 import { logoutSession, onSessionChanged } from "../data/sessionStore.js";
@@ -52,15 +52,19 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [errorPopup, setErrorPopup] = useState({ title: "", message: "" });
-  const [authMethods, setAuthMethods] = useState([]);
+  const [authMethods, setAuthMethods] = useState(null);
+  const [confirmationResult, setConfirmationResult] = useState(null);
 
   useEffect(() => {
     let active = true;
     api.getAuthMethods()
       .then((methods) => {
-        if (active) setAuthMethods(methods);
+        if (active) setAuthMethods(methods || []);
       })
-      .catch(console.error);
+      .catch((err) => {
+        console.error("Failed to load auth methods", err);
+        if (active) setAuthMethods([]);
+      });
 
     return () => {
       active = false;
@@ -86,12 +90,11 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
   };
 
   const publicAuthMethods = useMemo(() => {
-    const configuredAuthMethods = authMethods.length ? authMethods : fallbackPublicAuthMethods;
-    return configuredAuthMethods.filter((method) => publicAuthMethodIds.has(getAuthMethodId(method)));
+    if (authMethods === null) return []; // Still loading
+    return authMethods.filter((method) => publicAuthMethodIds.has(getAuthMethodId(method)));
   }, [authMethods]);
   const getPublicAuthMethod = (id) =>
-    publicAuthMethods.find((method) => getAuthMethodId(method) === id) ||
-    fallbackPublicAuthMethods.find((method) => method.id === id);
+    publicAuthMethods.find((method) => getAuthMethodId(method) === id);
   const googleMethod = getPublicAuthMethod("google");
   const otpMethod = getPublicAuthMethod("otp");
   const isGoogleAvailable = isAuthMethodAvailable(googleMethod);
@@ -168,14 +171,38 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
       return;
     }
 
-    if (!isOtpLoginEnabled && isOtpSignupEnabled && !isEmail(identifier)) {
-      showError("Phone OTP login is coming soon. Use an email address to sign up with OTP.", "Email required");
-      return;
-    }
-
     setLoading(true);
     clearError();
 
+    if (isPhoneLike(identifier)) {
+      try {
+        if (window.recaptchaVerifier) {
+          window.recaptchaVerifier.clear();
+          window.recaptchaVerifier = null;
+        }
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          'size': 'invisible'
+        });
+        const appVerifier = window.recaptchaVerifier;
+        const formattedPhone = identifier.startsWith("+") ? identifier : `+91${identifier}`;
+        const confResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
+        setConfirmationResult(confResult);
+        setOtpPurpose("login");
+        setStep("otp");
+        toast.success("SMS OTP sent to your phone.");
+      } catch (error) {
+        showError(error.message || "Could not send SMS OTP.", "OTP not sent");
+        if (window.recaptchaVerifier) {
+          window.recaptchaVerifier.clear();
+          window.recaptchaVerifier = null;
+        }
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Email fallback
     try {
       const firstPurpose = isOtpLoginEnabled ? "login" : "signup";
       const response = await api.requestOtp(
@@ -200,10 +227,6 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
         } catch (signupError) {
           showError(signupError.message || "Could not send OTP.", "OTP not sent");
         }
-      } else if (error.status === 404 && isPhoneLike(identifier)) {
-        showError("Phone login works for existing accounts only. Use your email or Gmail to create a new account.", "Account not found");
-      } else if (error.status === 409 && !isOtpLoginEnabled) {
-        showError("This account already exists, but OTP login is currently coming soon.", "OTP login unavailable");
       } else {
         showError(error.message || "Could not send OTP.", "OTP not sent");
       }
@@ -218,12 +241,34 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
     const otp = form.otp.trim();
 
     if (!otp) {
-      showError("Enter the OTP sent to your email.", "OTP required");
+      showError("Enter the OTP sent to your email or phone.", "OTP required");
       return;
     }
 
     setLoading(true);
     clearError();
+
+    if (isPhoneLike(identifier)) {
+      try {
+        if (!confirmationResult) {
+          showError("Session expired. Please request OTP again.", "Session Expired");
+          setStep("identity");
+          setLoading(false);
+          return;
+        }
+        const result = await confirmationResult.confirm(otp);
+        const idToken = await result.user.getIdToken(true);
+        const response = await api.firebasePhoneLogin({ idToken, mode: "login" });
+        api.saveSession(response);
+        toast.success("Phone login complete.");
+        accountDestination(response.user);
+      } catch (error) {
+        showError(error.message || "OTP not verified. Please try again.", "OTP not verified");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
 
     try {
       const payload = otpPurpose === "signup"
@@ -241,10 +286,7 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
   };
 
   const handleGoogleSuccess = async () => {
-    if (!isGoogleAvailable) {
-      showError("Gmail login is coming soon.", "Coming soon");
-      return;
-    }
+
 
     setLoading(true);
     clearError();
@@ -354,38 +396,17 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
             {step === "choice" ? (
               <div className="brave-theme-inner-card" style={{ padding: '8px' }}>
                 <button
-                  className={`brave-choice-btn ${!isGoogleAvailable ? "is-disabled" : ""}`}
+                  className="brave-choice-btn"
                   type="button"
                   onClick={handleGoogleSuccess}
-                  disabled={loading || !isGoogleAvailable}
+                  disabled={loading}
                 >
                   <div className="brave-choice-icon">
                     <span className="google-logo" style={{ fontSize: '20px', fontWeight: 'bold' }}>G</span>
                   </div>
                   <div className="brave-choice-content">
                     <strong>Continue with Google</strong>
-                    <small>
-                      {isGoogleAvailable ? "Login or sign up instantly" : "Coming Soon"}
-                    </small>
-                  </div>
-                </button>
-                <button
-                  className={`brave-choice-btn ${!isOtpAvailable ? "is-disabled" : ""}`}
-                  type="button"
-                  onClick={() => {
-                    if (isOtpAvailable) setStep("identity");
-                  }}
-                  disabled={loading || !isOtpAvailable}
-                  style={{ marginBottom: '0' }}
-                >
-                  <div className="brave-choice-icon">
-                    <Phone size={20} />
-                  </div>
-                  <div className="brave-choice-content">
-                    <strong>Phone / Email OTP</strong>
-                    <small>
-                      {isOtpAvailable ? "Use verification code" : "Coming Soon"}
-                    </small>
+                    <small>Login or sign up instantly</small>
                   </div>
                 </button>
                 {compact && (
@@ -449,7 +470,7 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
                     </div>
                     <div className="otp-message-text">
                       MESSAGE - OTP<br/>
-                      A verification code was sent to your inbox.
+                      A verification code was sent to your {isPhoneLike(form.identifier) ? 'phone' : 'inbox'}.
                     </div>
                   </div>
 
@@ -475,6 +496,7 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
   if (compact) {
     return (
       <>
+        <div id="recaptcha-container"></div>
         <div className="auth-popup-backdrop login-welcome-backdrop" role="dialog" aria-modal="true" aria-label="Login">
           <section className="login-welcome-popup">{authCard}</section>
         </div>
@@ -499,6 +521,7 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
 
   return (
     <section className="auth-page shell">
+      <div id="recaptcha-container"></div>
       <div className="auth-stage">
         <AuthVisual />
         {authCard}

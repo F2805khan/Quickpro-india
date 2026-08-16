@@ -13,6 +13,10 @@ const AgentDetail = ({ agentId, onBack }) => {
   const [actionReason, setActionReason] = useState("");
   const [viewingDocUrl, setViewingDocUrl] = useState(null);
   const [activeTab, setActiveTab] = useState("profile");
+  
+  // File upload state
+  const [uploadFiles, setUploadFiles] = useState({});
+  const [uploadingType, setUploadingType] = useState(null);
 
   useEffect(() => {
     loadAgentData();
@@ -54,6 +58,16 @@ const AgentDetail = ({ agentId, onBack }) => {
     }
   };
 
+  const handleOnlineToggle = async () => {
+    try {
+      await api.updateAgent(agentId, { isOnline: !agent.isOnline });
+      toast.success(`Agent marked as ${!agent.isOnline ? 'Online' : 'Offline'}`);
+      loadAgentData();
+    } catch (err) {
+      toast.error("Failed to update online status");
+    }
+  };
+
   const handleVerification = async (newStatus) => {
     if (newStatus === 'rejected' && !actionReason.trim()) {
       toast.error("Please provide a reason for rejection.");
@@ -79,9 +93,45 @@ const AgentDetail = ({ agentId, onBack }) => {
     }
   };
 
+  const handleFileChange = (type, file) => {
+    setUploadFiles(prev => ({ ...prev, [type]: file }));
+  };
+
+  const handleFileUpload = async (type) => {
+    const file = uploadFiles[type];
+    if (!file) {
+      toast.error(`Please select a file for ${type.replace('_', ' ')}`);
+      return;
+    }
+
+    try {
+      setUploadingType(type);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("fileType", type);
+
+      await api.uploadAgentDocument(agentId, formData);
+      toast.success(`${type.replace('_', ' ')} uploaded successfully`);
+      
+      setUploadFiles(prev => ({ ...prev, [type]: null }));
+      // Refresh documents
+      const docs = await api.getAgentDocuments(agentId);
+      setDocuments(docs || []);
+    } catch (err) {
+      toast.error(err.message || "Failed to upload document");
+    } finally {
+      setUploadingType(null);
+    }
+  };
+
   if (loading || !agent) {
     return <div style={{ padding: '40px', textAlign: 'center' }}>Loading agent profile...</div>;
   }
+
+  // Calculate earnings
+  const completedJobs = jobs.filter(j => j.bookingStatus === 'Completed' || j.status === 'Completed' || j.booking_status === 'Completed');
+  const totalEarnings = completedJobs.reduce((sum, job) => sum + (Number(job.amount) || 0), 0);
+  const averageEarnings = completedJobs.length > 0 ? Math.round(totalEarnings / completedJobs.length) : 0;
 
   return (
     <div className="agent-detail animate-slide-up">
@@ -100,10 +150,21 @@ const AgentDetail = ({ agentId, onBack }) => {
             <h3 style={{ margin: '0 0 5px 0' }}>{agent.name}</h3>
             <p style={{ color: '#666', margin: '0 0 15px 0' }}>{agent.phone || agent.email}</p>
             
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '15px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '15px', alignItems: 'center' }}>
               <span className={`status-badge ${agent.status}`} style={{ padding: '5px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', background: '#f8f9fa', border: '1px solid #ddd' }}>
                 {agent.status}
               </span>
+              <button 
+                onClick={handleOnlineToggle}
+                style={{ 
+                  padding: '5px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', 
+                  background: agent.isOnline ? '#dcfce7' : '#fee2e2', 
+                  color: agent.isOnline ? '#166534' : '#991b1b', 
+                  border: `1px solid ${agent.isOnline ? '#86efac' : '#fca5a5'}`, cursor: 'pointer' 
+                }}
+              >
+                {agent.isOnline ? 'Online' : 'Offline'}
+              </button>
             </div>
             
             <p style={{ fontSize: '0.8rem', color: '#888' }}>
@@ -167,12 +228,117 @@ const AgentDetail = ({ agentId, onBack }) => {
                   </span>
                 </div>
                 
-                {agent.verificationStatus === 'under_review' && (
-                  <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0', display: 'flex', gap: '10px' }}>
-                    <button className="btn" style={{ background: '#22c55e', color: 'white' }} onClick={() => handleVerification('verified')}>Approve KYC</button>
-                    <button className="btn" style={{ background: '#ef4444', color: 'white' }} onClick={() => handleVerification('rejected')}>Reject KYC</button>
+                {agent.verificationStatus === 'verified' ? (
+                  <div style={{ background: '#f0fdf4', padding: '20px', borderRadius: '12px', marginBottom: '25px', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div style={{ background: '#dcfce7', padding: '10px', borderRadius: '50%', color: '#16a34a' }}>
+                      <CheckCircle size={24} />
+                    </div>
+                    <div>
+                      <h4 style={{ margin: '0 0 5px 0', color: '#166534' }}>KYC Verified</h4>
+                      <p style={{ margin: 0, fontSize: '0.9rem', color: '#15803d' }}>
+                        This agent's documents have been successfully verified. They are now eligible to accept and fulfill jobs.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ background: agent.verificationStatus === 'rejected' ? '#fef2f2' : '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '25px', border: `1px solid ${agent.verificationStatus === 'rejected' ? '#fecaca' : '#e2e8f0'}`, display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 5px 0', display: 'flex', alignItems: 'center', gap: '8px', color: agent.verificationStatus === 'rejected' ? '#b91c1c' : '#1e293b' }}>
+                          {agent.verificationStatus === 'rejected' ? <AlertTriangle size={18} className="text-red" /> : <ShieldCheck size={18} className="text-gray" />} 
+                          {agent.verificationStatus === 'rejected' ? 'KYC Rejected - Action Flagged' : 'KYC Action Required'}
+                        </h4>
+                        <p style={{ margin: 0, fontSize: '0.9rem', color: agent.verificationStatus === 'rejected' ? '#991b1b' : '#64748b' }}>
+                          {agent.verificationStatus === 'rejected' 
+                            ? "This agent's KYC was rejected. Waiting for valid documents to be uploaded before you can verify them." 
+                            : "Review the documents below before making a decision. This directly affects the agent's ability to accept jobs."}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '5px' }}>
+                      <button 
+                        className="btn" 
+                        style={{ 
+                          flex: 1,
+                          display: 'flex', 
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          gap: '8px',
+                          background: '#22c55e', 
+                          color: 'white', 
+                          border: 'none',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          fontWeight: '600',
+                          boxShadow: '0 4px 6px -1px rgba(34, 197, 94, 0.2), 0 2px 4px -1px rgba(34, 197, 94, 0.1)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }} 
+                        onClick={() => handleVerification('verified')} 
+                      >
+                        <CheckCircle size={18} /> Approve KYC
+                      </button>
+                      
+                      {agent.verificationStatus !== 'rejected' && (
+                        <button 
+                          className="btn" 
+                          style={{ 
+                            flex: 1,
+                            display: 'flex', 
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: '8px',
+                            background: '#fff', 
+                            color: '#ef4444', 
+                            border: '1px solid #fca5a5',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }} 
+                          onClick={() => handleVerification('rejected')} 
+                        >
+                          <XCircle size={18} /> Reject KYC
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
+
+                <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ margin: '0 0 15px 0' }}>Upload New Documents</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '15px' }}>
+                    {[
+                      { key: 'profile_photo', label: 'Profile Photo (Visible to Customer)' },
+                      { key: 'aadhaar_front', label: 'Aadhaar Front' },
+                      { key: 'aadhaar_back', label: 'Aadhaar Back' },
+                      { key: 'pan_card', label: 'PAN Card' },
+                      { key: 'driving_license', label: 'Driving License / Other' }
+                    ].map((docType) => (
+                      <div key={docType.key} style={{ background: '#f9fafb', padding: '15px', borderRadius: '8px', border: '1px solid #eee' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: docType.key === 'profile_photo' ? '#2563eb' : '#374151' }}>
+                          {docType.label}
+                        </label>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <input 
+                            type="file" 
+                            onChange={(e) => handleFileChange(docType.key, e.target.files[0])}
+                            style={{ flex: 1, padding: '6px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '13px', width: '100%' }}
+                          />
+                          <button 
+                            className="btn btn-primary btn-small" 
+                            disabled={uploadingType === docType.key || !uploadFiles[docType.key]} 
+                            onClick={() => handleFileUpload(docType.key)}
+                          >
+                            {uploadingType === docType.key ? '...' : 'Upload'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
                 <h4>Uploaded Documents ({documents.length})</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
@@ -224,6 +390,23 @@ const AgentDetail = ({ agentId, onBack }) => {
                       {stats.totalJobs ? Math.round(((stats.completedJobs || 0) / stats.totalJobs) * 100) : 0}%
                     </div>
                     <div style={{ fontSize: '0.9rem', color: '#92400e' }}>Completion Rate</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
+                  <div style={{ background: '#ecfdf5', padding: '20px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #a7f3d0' }}>
+                    <div>
+                      <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#065f46' }}>₹{totalEarnings.toLocaleString()}</div>
+                      <div style={{ fontSize: '0.9rem', color: '#047857', fontWeight: '500' }}>Total Earnings (Completed Jobs)</div>
+                    </div>
+                    <WalletCards size={32} color="#10b981" opacity={0.5} />
+                  </div>
+                  <div style={{ background: '#f0fdf4', padding: '20px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #bbf7d0' }}>
+                    <div>
+                      <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#166534' }}>₹{averageEarnings.toLocaleString()}</div>
+                      <div style={{ fontSize: '0.9rem', color: '#15803d', fontWeight: '500' }}>Average Earning per Job</div>
+                    </div>
+                    <Activity size={32} color="#22c55e" opacity={0.5} />
                   </div>
                 </div>
                 

@@ -11,16 +11,24 @@ export const protect = asyncHandler(async (req, res, next) => {
     throw new Error("Not authorized, token missing");
   }
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    res.status(401);
+    throw new Error("Not authorized, token invalid or expired");
+  }
+
+  try {
     req.user = await User.findByPk(decoded.id, {
       attributes: {
         exclude: ["password", "otpCode", "otpExpires"]
       }
     });
   } catch (error) {
-    res.status(401);
-    throw new Error("Not authorized, token invalid or expired");
+    console.error("Database error in auth middleware:", error);
+    res.status(500);
+    throw new Error("Internal server error: Database unreachable");
   }
 
   if (!req.user) {
@@ -40,14 +48,23 @@ export const optionalProtect = asyncHandler(async (req, res, next) => {
     return;
   }
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+  } catch {
+    req.user = null;
+    next();
+    return;
+  }
+
+  try {
     req.user = await User.findByPk(decoded.id, {
       attributes: {
         exclude: ["password", "otpCode", "otpExpires"]
       }
     });
-  } catch {
+  } catch (error) {
+    console.error("Database error in optional auth middleware:", error);
     req.user = null;
   }
 

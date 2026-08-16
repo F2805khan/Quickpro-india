@@ -1,5 +1,4 @@
 import { ProviderAvailability, ProviderServiceArea, Provider, Booking } from "../models/index.js";
-import dayjs from "dayjs";
 
 export const getAvailableSlots = async (req, res) => {
   try {
@@ -8,8 +7,8 @@ export const getAvailableSlots = async (req, res) => {
       return res.status(400).json({ error: "date and pincode are required" });
     }
 
-    const requestedDate = dayjs(date);
-    const dayOfWeek = requestedDate.format("dddd"); // e.g. 'Monday'
+    const requestedDate = new Date(date);
+    const dayOfWeek = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(requestedDate);
 
     // Find providers serving this pincode
     const serviceAreas = await ProviderServiceArea.find({ pincode });

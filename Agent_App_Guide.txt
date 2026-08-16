@@ -1,0 +1,111 @@
+# Quickpro India - Agent App Architecture & Development Guide
+
+Building a dedicated application for your service agents is the next major step in scaling Quickpro India. Below is a comprehensive blueprint on the exact features required, the technical architecture, and how to seamlessly link it to your existing website and Supabase database.
+
+---
+
+## 1. System Architecture Overview
+
+The Agent App will be a standalone mobile application (for Android and iOS). It should **not** connect directly to your database. Instead, it will talk to the exact same Node.js/Express backend (`server.js`) that your current web frontend uses.
+
+**The Communication Flow:**
+`Agent Mobile App` ↔️ `REST API (Node.js/Express)` ↔️ `Supabase PostgreSQL`
+
+**Real-Time Data Flow:**
+`Agent Mobile App` ↔️ `Socket.io & Firebase` ↔️ `Backend Server` ↔️ `Customer Website`
+
+### Why this architecture?
+1. **Security:** Your backend safely validates auth tokens and prevents agents from seeing other agents' data.
+2. **Single Source of Truth:** Both the website and the mobile app trigger the exact same code, meaning no conflicting statuses (like the DB constraint errors we fixed earlier).
+
+---
+
+## 2. Core Features of the Agent App
+
+### A. Onboarding & KYC (Know Your Customer)
+- **Phone Login:** Passwordless login using OTP via SMS.
+- **Profile Setup:** Capture name, service radius (km), and vehicle details.
+- **Document Scanner:** Native camera integration to snap and upload Aadhaar, PAN, and Profile pictures directly to your backend (which then uploads to Supabase Storage `agent_documents`).
+- **Skill Selection:** Toggle which specific services they are qualified for.
+- **Account Lock:** A "Pending Approval" holding screen that blocks access to jobs until the admin approves their KYC on the website dashboard.
+
+### B. Job Notifications (The "Ping")
+- **Push Notifications:** Since the app might be closed in the agent's pocket, you must use **Firebase Cloud Messaging (FCM)** to wake up the phone and play a loud ringtone.
+- **The Job Card:** Shows Estimated Earnings, Distance to Customer, and Service Type.
+- **Timer:** The agent has 60 seconds to tap **"Accept"**. If ignored, the backend routes the job to the next available agent.
+
+### C. Live Duty & Navigation Workflow
+- **Duty Toggle:** A simple "Go Online / Offline" switch. Agents only receive pings when Online.
+- **Map Integration:** Google Maps API to navigate to the customer.
+- **Status Updates:** Large, easy-to-tap buttons to progress the job:
+  1. `Start Journey` (Triggers "On The Way")
+  2. `Arrived`
+  3. `Start Service` (Triggers "Service In Progress")
+  4. `Finish` (Triggers "Completed")
+- **Job Proof:** A feature requiring the agent to take a photo of the completed work before they can hit "Finish".
+- **Live Location Tracking:** When "On The Way" is active, the app reads device GPS in the background and streams coordinates to your Node.js server via `socket.io`.
+
+### D. Earnings & Payouts Dashboard
+- **Daily Ledger:** Real-time sync of what they earned today vs this week.
+- **Payout Status:** Visually separate "Pending Payouts" (money Quickpro owes them) from "Settled".
+
+---
+
+## 3. How to Connect the App to Your Existing System
+
+### Step 1: Extend Your Node.js Backend
+You will need to create a dedicated set of mobile APIs in your Express server. For example:
+* `POST /api/mobile/auth/login` (Issues a mobile JWT token)
+* `GET /api/mobile/jobs/active` (Gets their current accepted jobs)
+* `PUT /api/mobile/jobs/:id/status` (Updates the status)
+
+### Step 2: Live Location via Socket.io
+You already have Socket.io running on your Node.js server.
+In the mobile app, install `socket.io-client`. When the agent is driving, the mobile app runs a loop:
+```javascript
+// Inside the Agent App
+navigator.geolocation.watchPosition((pos) => {
+  socket.emit("location_update", { 
+    bookingId: "123", 
+    latitude: pos.coords.latitude, 
+    longitude: pos.coords.longitude 
+  });
+});
+```
+Your backend receives this and broadcasts it to the website so the customer sees the agent moving on the map.
+
+### Step 3: Firebase Integration
+To make the phone ring when a booking is created on the website:
+1. Customer clicks "Book" on the website.
+2. Your Node.js backend saves the booking to Supabase.
+3. Node.js finds nearby agents and sends a request to Firebase.
+4. Firebase sends the push notification to the Agent's phone.
+
+---
+
+## 4. Recommended Technology Stack
+
+Since you already know React (used in your current frontend), you should build the app using **React Native (with Expo)**. 
+- **Framework:** React Native / Expo (Allows you to code in JavaScript and release for both Android and iOS).
+- **Navigation:** React Navigation.
+- **Maps:** `react-native-maps` for routing and map displays.
+- **State Management:** Zustand (lightweight and fast).
+- **Networking:** Axios (to talk to your Node.js server).
+
+---
+
+## 5. Step-by-Step Implementation Strategy
+
+1. **Phase 1: Backend Prep (1-2 Weeks)**
+   - Build the `/api/mobile/*` endpoints in your existing `server.js`.
+   - Setup a Firebase account and get the Admin SDK keys.
+2. **Phase 2: The Mobile App Skeleton (1 Week)**
+   - Initialize the Expo app.
+   - Build the Login and Onboarding/KYC screens.
+3. **Phase 3: The Job Engine (2 Weeks)**
+   - Build the background GPS tracking.
+   - Build the Push Notification listeners so the app pops open when a job arrives.
+   - Build the "Active Job" screen with the status update buttons.
+4. **Phase 4: Polish & Testing (1 Week)**
+   - Add the Earnings Dashboard.
+   - Test end-to-end: Book on the website ➡️ Receive on the app ➡️ Drive and Update Status ➡️ View completed stats on the Admin panel.

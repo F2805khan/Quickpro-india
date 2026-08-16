@@ -15,7 +15,7 @@ const getStepSubtitle = (step, booking, index, currentIndex, etaMinutes) => {
 
   if (index < currentIndex) {
     if (step.key === "Confirmed") return `Booked for ${dateTime}`;
-    if (step.key === "Professional Assigned") return `${professional} accepted your request`;
+    if (step.key === "Assigned") return `${professional} accepted your request`;
     if (step.key === "On The Way") return "Route shared with your professional";
     if (step.key === "Service In Progress") return "Visit started at your address";
     return "Step completed";
@@ -23,7 +23,7 @@ const getStepSubtitle = (step, booking, index, currentIndex, etaMinutes) => {
 
   if (index === currentIndex) {
     if (step.key === "Confirmed") return "We are confirming your booking details";
-    if (step.key === "Professional Assigned") return `Matching the best pro near you`;
+    if (step.key === "Assigned") return `Matching the best pro near you`;
     if (step.key === "On The Way") return `Arriving in about ${etaMinutes} minutes`;
     if (step.key === "Service In Progress") return `${professional} is working on your service`;
       if (step.key === "Completed") return "Thank you for booking with fixOindia";
