@@ -193,12 +193,15 @@ export const api = {
   verifyAgent: (id, payload) =>
     request(`/admin/agents/${encodeURIComponent(id)}/verify`, { method: "POST", body: JSON.stringify(payload) }),
   deleteAgent: (id) => request(`/admin/agents/${encodeURIComponent(id)}`, { method: "DELETE" }),
-  uploadAgentDocument: async (id, formData) => {
+  uploadAgentDocument: async (id, payload) => {
     const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
     const response = await fetch(`${API_URL}/admin/agents/${encodeURIComponent(id)}/documents`, {
       method: "POST",
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: formData
+      headers: { 
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}) 
+      },
+      body: JSON.stringify(payload)
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.message || "Upload failed");

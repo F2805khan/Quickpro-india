@@ -4,8 +4,6 @@ import {
   getAgentById, updateAgentStatus, verifyAgent, getAgentDocuments,
   viewAgentDocument, getAgentJobs, getAgentStats, uploadAgentDocument
 } from "../controllers/agentController.js";
-import multer from "multer";
-const upload = multer({ storage: multer.memoryStorage() });
 import { getAlerts, markAlertRead } from "../controllers/alertController.js";
 import { getAuditLogs } from "../controllers/auditController.js";
 import {
@@ -78,7 +76,7 @@ router.put("/agents/:id", updateAgent);
 router.delete("/agents/:id", deleteAgent);
 router.post("/agents/:id/status", updateAgentStatus);
 router.post("/agents/:id/verify", verifyAgent);
-router.post("/agents/:id/documents", upload.single("file"), uploadAgentDocument);
+router.post("/agents/:id/documents", uploadAgentDocument);
 router.get("/agents/:id/documents", getAgentDocuments);
 router.get("/agents/:id/documents/:fileId/view", viewAgentDocument);
 router.get("/agents/:id/jobs", getAgentJobs);

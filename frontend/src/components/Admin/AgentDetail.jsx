@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, User, ShieldCheck, ShieldAlert, CheckCircle, XCircle, AlertTriangle, Briefcase, Star, Clock, Activity, FileText } from "lucide-react";
+import { supabase } from "../../supabase.js";
 import { toast } from "../../utils/notifications.js";
 import { api } from "../../api/client.js";
 
@@ -106,11 +107,28 @@ const AgentDetail = ({ agentId, onBack }) => {
 
     try {
       setUploadingType(type);
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("fileType", type);
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${agentId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-      await api.uploadAgentDocument(agentId, formData);
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('agent_documents')
+        .upload(fileName, file, {
+          contentType: file.type,
+          upsert: false
+        });
+
+      if (uploadError) {
+        throw new Error(uploadError.message || "Failed to upload to Supabase storage");
+      }
+
+      await api.uploadAgentDocument(agentId, {
+        fileType: type,
+        storagePath: uploadData.path,
+        originalName: file.name,
+        mimeType: file.type,
+        size: file.size
+      });
       toast.success(`${type.replace('_', ' ')} uploaded successfully`);
       
       setUploadFiles(prev => ({ ...prev, [type]: null }));

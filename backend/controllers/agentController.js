@@ -390,10 +390,10 @@ export const getAgentStats = async (req, res) => {
 export const uploadAgentDocument = async (req, res) => {
   try {
     const agentId = req.params.id;
-    const { fileType } = req.body;
+    const { fileType, storagePath, originalName, mimeType, size } = req.body;
     
-    if (!req.file) {
-      return res.status(400).json({ message: "No file provided" });
+    if (!storagePath) {
+      return res.status(400).json({ message: "No storagePath provided" });
     }
 
     const agent = await Agent.findByPk(agentId);
@@ -401,29 +401,14 @@ export const uploadAgentDocument = async (req, res) => {
       return res.status(404).json({ message: "Agent not found" });
     }
 
-    const fileExt = req.file.originalname.split('.').pop();
-    const fileName = `${agentId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-    const { data, error } = await supabase.storage
-      .from('agent_documents')
-      .upload(fileName, req.file.buffer, {
-        contentType: req.file.mimetype,
-        upsert: false
-      });
-
-    if (error) {
-      console.error("Supabase storage upload error:", error);
-      return res.status(500).json({ message: "Failed to upload to storage" });
-    }
-
     const fileRecord = await File.create({
       ownerId: agentId,
       ownerType: 'agent',
       fileType: fileType || 'other',
-      storagePath: data.path,
-      originalName: req.file.originalname,
-      mimeType: req.file.mimetype,
-      size: req.file.size
+      storagePath: storagePath,
+      originalName: originalName || 'upload',
+      mimeType: mimeType || 'application/octet-stream',
+      size: size || 0
     });
 
     // Update agent's specific column if this is a known KYC doc type
@@ -441,8 +426,7 @@ export const uploadAgentDocument = async (req, res) => {
 
     res.status(201).json(fileRecord);
   } catch (error) {
-    console.error("Error uploading agent document:", error);
+    console.error("Error creating document record:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
-
