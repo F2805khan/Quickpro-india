@@ -9,7 +9,7 @@ import { createServer } from "node:http";
 import { Server } from "socket.io";
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
 import adminRoutes from "./routes/adminRoutes.js";
-import authRoutes from "./routes/authRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import databaseRoutes from "./routes/databaseRoutes.js";
 import whatsappRoutes from "./routes/whatsappRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
@@ -64,7 +64,7 @@ app.get("/api/health", async (req, res) => {
   });
 });
 
-app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/coupons", couponRoutes);

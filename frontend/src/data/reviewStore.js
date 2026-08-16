@@ -1,6 +1,3 @@
-import { collection, doc, getDocs, setDoc } from "firebase/firestore";
-import { db } from "../components/firebase.js";
-
 const REVIEWS_KEY = "funservice-customer-reviews";
 
 const clean = (value) => String(value || "").trim();
@@ -25,17 +22,6 @@ const saveLocalReviews = (reviews) => {
 };
 
 export const getCustomerReviews = async () => {
-  try {
-    const snapshot = await getDocs(collection(db, "customerReviews"));
-    if (!snapshot.empty) {
-      const reviews = snapshot.docs.map((review) => review.data());
-      saveLocalReviews(reviews);
-      return sortReviews(reviews);
-    }
-  } catch (error) {
-    console.warn("Firestore review lookup unavailable; using local review cache.", error);
-  }
-
   return sortReviews(readLocalReviews());
 };
 
@@ -52,10 +38,6 @@ export const saveCustomerReview = async (values) => {
 
   const reviews = [review, ...readLocalReviews()];
   saveLocalReviews(reviews);
-
-  setDoc(doc(db, "customerReviews", review.reviewId), review).catch((error) => {
-    console.warn("Firestore review save unavailable; review is saved locally.", error);
-  });
 
   return review;
 };

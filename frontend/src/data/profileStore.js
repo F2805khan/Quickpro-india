@@ -1,6 +1,4 @@
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { api } from "../api/client.js";
-import { db } from "../components/firebase.js";
 
 const profileKey = (uid) => `funservice-profile-${uid}`;
 
@@ -65,25 +63,13 @@ export const mergeProfiles = (preferred, fallback) => {
 
 export const PROFILE_CHANGED_EVENT = "funservice:profile-changed";
 
-const userFieldsFromProfile = (profile) => ({
-  name: profile.name,
-  phone: profile.phone,
-  address: profile.address,
-  city: profile.city,
-  email: profile.email,
-  latitude: profile.latitude,
-  longitude: profile.longitude
-});
-
 export const publishProfileUpdate = (profile) => {
   if (!profile?.uid) return profile;
 
   saveLocalProfile(profile);
 
-  if (api.hasToken()) {
-    api.updateSavedUser(userFieldsFromProfile(profile));
-  }
-
+  // Dispatch an event to update the session in the app
+  window.dispatchEvent(new CustomEvent("funservice:profile-updated", { detail: profile }));
   window.dispatchEvent(new CustomEvent(PROFILE_CHANGED_EVENT, { detail: profile }));
   return profile;
 };
@@ -124,25 +110,13 @@ const profileFromBackend = (user) => ({
   uid: user?._id || user?.uid
 });
 
-const saveFirestoreProfile = (profile, existingProfile = null) =>
-  setDoc(
-    doc(db, "userProfiles", profile.uid),
-    {
-      ...profile,
-      createdAt: existingProfile?.createdAt || profile.createdAt || serverTimestamp(),
-      updatedAt: serverTimestamp()
-    },
-    { merge: true }
-  ).catch((error) => {
-    console.warn("Firestore profile save unavailable; SQL profile remains saved.", error);
-  });
-
 export const getUserProfile = async (user) => {
   if (!user?.uid) return null;
 
   const cachedProfile = getCachedUserProfile(user.uid);
+  const hasToken = await api.hasToken();
 
-  if (api.hasToken()) {
+  if (hasToken) {
     try {
       const response = await api.getProfile();
       const remoteProfile = profileFromBackend(response.user);
@@ -152,18 +126,6 @@ export const getUserProfile = async (user) => {
     } catch (error) {
       console.warn("SQL profile lookup unavailable; using cached profile.", error);
     }
-  }
-
-  try {
-    const snapshot = await getDoc(doc(db, "userProfiles", user.uid));
-    if (snapshot.exists()) {
-      const firestoreProfile = { uid: user.uid, ...snapshot.data() };
-      const mergedProfile = mergeProfiles(cachedProfile, firestoreProfile);
-      saveLocalProfile(mergedProfile);
-      return mergedProfile;
-    }
-  } catch (error) {
-    console.warn("Firestore profile lookup unavailable; using local profile cache.", error);
   }
 
   return cachedProfile;
@@ -189,7 +151,9 @@ export const saveUserProfile = async (user, values, existingProfile = null) => {
 
   saveLocalProfile(profile);
 
-  if (api.hasToken()) {
+  const hasToken = await api.hasToken();
+
+  if (hasToken) {
     const response = await api.updateProfile({
       name: profile.name,
       email: profile.email,
@@ -217,10 +181,8 @@ export const saveUserProfile = async (user, values, existingProfile = null) => {
       updatedAt: profile.updatedAt
     };
 
-    saveFirestoreProfile(savedProfile, existingProfile);
     return publishProfileUpdate(savedProfile);
   }
 
-  saveFirestoreProfile(profile, existingProfile);
   return publishProfileUpdate(profile);
 };

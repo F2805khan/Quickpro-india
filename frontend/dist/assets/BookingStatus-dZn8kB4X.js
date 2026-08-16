@@ -1,0 +1,1 @@
+import{K as t,j as a,O as r}from"./index-HkMrEybo.js";function s(){const{bookingId:e}=t(),o=e?.replace(/^#/,"")||"";return a.jsx(r,{to:o?`/profile?booking=${encodeURIComponent(o)}&track=live`:"/profile",replace:!0})}export{s as default};

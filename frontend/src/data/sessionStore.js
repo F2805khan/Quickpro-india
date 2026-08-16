@@ -1,51 +1,58 @@
-import { onAuthStateChanged, signOut as signOutFirebase } from "firebase/auth";
-import { api } from "../api/client.js";
-import { auth } from "../components/firebase.js";
+import { supabase } from "../supabase.js";
 
-export const isPrivilegedUser = (user) => ["admin", "owner"].includes(user?.role);
-
+// Utility to display user name or default
 export const displayUserName = (user) => {
-  const name = user?.name || user?.displayName || user?.userId || "";
+  const meta = user?.user_metadata || {};
+  const name = meta.full_name || meta.name || user?.phone || user?.email || "";
   return name.toLowerCase() === "quickfix admin" ? "Quickpro India Control" : name || "Account";
 };
 
-const asBackendUser = (user) =>
-  user
-    ? {
-        ...user,
-        uid: user._id || user.uid,
-        displayName: displayUserName(user),
-        phoneNumber: user.phone,
-        backendSession: true
-      }
-    : null;
-
-const getBackendUser = () => {
-  const savedUser = api.getSavedUser();
-  return api.hasToken() && savedUser ? asBackendUser(savedUser) : null;
+// Normalize Supabase user to the expected frontend shape
+const asBackendUser = (supabaseUser) => {
+  if (!supabaseUser) return null;
+  const meta = supabaseUser.user_metadata || {};
+  return {
+    ...supabaseUser,
+    ...meta,
+    uid: supabaseUser.id,
+    _id: supabaseUser.id,
+    displayName: displayUserName(supabaseUser),
+    phoneNumber: supabaseUser.phone || meta.phone,
+    name: meta.full_name || meta.name,
+    backendSession: true
+  };
 };
-const sessionChangedEvent = "funservice:session-changed";
+
+export const isPrivilegedUser = (user) => ["admin", "owner"].includes(user?.role || user?.user_metadata?.role);
+
+let currentSessionUser = null;
+const sessionListeners = new Set();
 const profileUpdatedEvent = "funservice:profile-updated";
 
-export const getCurrentSessionUser = () => getBackendUser();
+// Initialize and listen to Supabase Auth state changes
+supabase.auth.onAuthStateChange((event, session) => {
+  currentSessionUser = session?.user ? asBackendUser(session.user) : null;
+  for (const callback of sessionListeners) {
+    callback(currentSessionUser);
+  }
+});
+
+// Fetch initial session on load
+supabase.auth.getSession().then(({ data: { session } }) => {
+  currentSessionUser = session?.user ? asBackendUser(session.user) : null;
+  for (const callback of sessionListeners) {
+    callback(currentSessionUser);
+  }
+});
+
+export const getCurrentSessionUser = () => currentSessionUser;
 
 export const onSessionChanged = (callback) => {
-  let sessionTimer;
-
-  const emit = () => callback(getCurrentSessionUser());
-  const onBackendSessionChanged = () => {
-    clearTimeout(sessionTimer);
-    sessionTimer = setTimeout(() => emit(), 80);
-  };
-  const unsubscribeFirebase = auth ? onAuthStateChanged(auth, () => onBackendSessionChanged()) : () => {};
-
-  emit();
-  window.addEventListener(sessionChangedEvent, onBackendSessionChanged);
+  sessionListeners.add(callback);
+  callback(currentSessionUser);
 
   return () => {
-    clearTimeout(sessionTimer);
-    unsubscribeFirebase();
-    window.removeEventListener(sessionChangedEvent, onBackendSessionChanged);
+    sessionListeners.delete(callback);
   };
 };
 
@@ -53,7 +60,8 @@ export const onProfileUpdated = (callback) => {
   const handler = (event) => {
     const saved = event.detail;
     if (!saved) return;
-    callback(asBackendUser(saved));
+    // We treat event.detail as the raw user metadata patch
+    callback(asBackendUser({ ...currentSessionUser, user_metadata: saved }));
   };
 
   window.addEventListener(profileUpdatedEvent, handler);
@@ -61,6 +69,5 @@ export const onProfileUpdated = (callback) => {
 };
 
 export const logoutSession = async () => {
-  api.clearSession();
-  if (auth?.currentUser) await signOutFirebase(auth);
+  await supabase.auth.signOut();
 };

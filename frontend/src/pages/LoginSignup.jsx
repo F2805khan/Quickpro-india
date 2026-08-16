@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "../utils/notifications.js";
-import { AlertCircle, ArrowLeft, CalendarDays, Mail, Phone, ShieldCheck, Sparkles, X } from "lucide-react";
-import { GoogleAuthProvider, signInWithPopup, signOut, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
-import { api } from "../api/client.js";
-import { auth } from "../components/firebase.js";
+import { AlertCircle, ArrowLeft, CalendarDays, Mail, ShieldCheck, Sparkles, X } from "lucide-react";
+import { supabase } from "../supabase.js";
 import { logoutSession, onSessionChanged } from "../data/sessionStore.js";
 import "../styles/otp-card.css";
 
@@ -15,61 +13,14 @@ const blankForm = {
 
 const isEmail = (value) => /\S+@\S+\.\S+/.test(value.trim());
 const isPhoneLike = (value) => /^[+\d][\d\s-]{7,}$/.test(value.trim());
-const fallbackPublicAuthMethods = [
-  {
-    id: "google",
-    method: "Google",
-    description: "Continue with Google (Gmail)",
-    signupEnabled: true,
-    loginEnabled: true
-  },
-  {
-    id: "otp",
-    method: "OTP",
-    description: "Signup/login with a one-time email OTP",
-    signupEnabled: true,
-    loginEnabled: true
-  }
-];
-
-const publicAuthMethodIds = new Set(["google", "otp"]);
-const getAuthMethodId = (method) =>
-  String(method?.id || method?.method || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-const isAuthActionEnabled = (method, action) =>
-  (action === "signup" ? method?.signupEnabled : method?.loginEnabled) !== false;
-const isAuthMethodAvailable = (method) =>
-  isAuthActionEnabled(method, "login") || isAuthActionEnabled(method, "signup");
 
 function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
   const navigate = useNavigate();
-  const [step, setStep] = useState("choice");
+  const [step, setStep] = useState("choice"); // "choice", "identity", "otp"
   const [form, setForm] = useState(blankForm);
-  const [otpPurpose, setOtpPurpose] = useState("login");
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [errorPopup, setErrorPopup] = useState({ title: "", message: "" });
-  const [authMethods, setAuthMethods] = useState(null);
-  const [confirmationResult, setConfirmationResult] = useState(null);
-
-  useEffect(() => {
-    let active = true;
-    api.getAuthMethods()
-      .then((methods) => {
-        if (active) setAuthMethods(methods || []);
-      })
-      .catch((err) => {
-        console.error("Failed to load auth methods", err);
-        if (active) setAuthMethods([]);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => onSessionChanged(setCurrentUser), []);
 
@@ -89,20 +40,6 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
     setErrorPopup({ title: "", message: "" });
   };
 
-  const publicAuthMethods = useMemo(() => {
-    if (authMethods === null) return []; // Still loading
-    return authMethods.filter((method) => publicAuthMethodIds.has(getAuthMethodId(method)));
-  }, [authMethods]);
-  const getPublicAuthMethod = (id) =>
-    publicAuthMethods.find((method) => getAuthMethodId(method) === id);
-  const googleMethod = getPublicAuthMethod("google");
-  const otpMethod = getPublicAuthMethod("otp");
-  const isGoogleAvailable = isAuthMethodAvailable(googleMethod);
-  const isOtpAvailable = isAuthMethodAvailable(otpMethod);
-  const isOtpLoginEnabled = isAuthActionEnabled(otpMethod, "login");
-  const isOtpSignupEnabled = isAuthActionEnabled(otpMethod, "signup");
-  const hasSignupEnabled = publicAuthMethods.some((method) => isAuthActionEnabled(method, "signup"));
-
   const update = (event) => {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
@@ -112,15 +49,12 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
     if (!/^\d*$/.test(value)) return;
     
     let currentOtp = form.otp.split('');
-    // Pad array if needed
     while (currentOtp.length < 6) currentOtp.push('');
-    
-    currentOtp[index] = value.slice(-1); // Take only the last character if multiple are typed
+    currentOtp[index] = value.slice(-1); 
     
     const newOtp = currentOtp.join('');
     setForm(current => ({ ...current, otp: newOtp }));
     
-    // Auto-focus next input
     if (value && index < 5) {
       const nextInput = document.getElementById(`otp-slot-${index + 1}`);
       if (nextInput) nextInput.focus();
@@ -132,7 +66,6 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
       const prevInput = document.getElementById(`otp-slot-${index - 1}`);
       if (prevInput) {
         prevInput.focus();
-        // Clear the previous input
         let currentOtp = form.otp.split('');
         currentOtp[index - 1] = '';
         setForm(current => ({ ...current, otp: currentOtp.join('') }));
@@ -145,7 +78,6 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
     const pastedData = e.clipboardData.getData('text').slice(0, 6).replace(/\D/g, '');
     if (pastedData) {
       setForm(current => ({ ...current, otp: pastedData }));
-      // Focus the next empty slot or the last slot
       const nextIndex = Math.min(pastedData.length, 5);
       const nextInput = document.getElementById(`otp-slot-${nextIndex}`);
       if (nextInput) nextInput.focus();
@@ -166,70 +98,31 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
       return;
     }
 
-    if (!isOtpAvailable) {
-      showError("Phone / Email OTP is coming soon.", "Coming soon");
-      return;
-    }
-
     setLoading(true);
     clearError();
 
-    if (isPhoneLike(identifier)) {
-      try {
-        if (window.recaptchaVerifier) {
-          window.recaptchaVerifier.clear();
-          window.recaptchaVerifier = null;
-        }
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          'size': 'invisible'
-        });
-        const appVerifier = window.recaptchaVerifier;
-        const formattedPhone = identifier.startsWith("+") ? identifier : `+91${identifier}`;
-        const confResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
-        setConfirmationResult(confResult);
-        setOtpPurpose("login");
-        setStep("otp");
-        toast.success("SMS OTP sent to your phone.");
-      } catch (error) {
-        showError(error.message || "Could not send SMS OTP.", "OTP not sent");
-        if (window.recaptchaVerifier) {
-          window.recaptchaVerifier.clear();
-          window.recaptchaVerifier = null;
-        }
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
-    // Email fallback
     try {
-      const firstPurpose = isOtpLoginEnabled ? "login" : "signup";
-      const response = await api.requestOtp(
-        firstPurpose === "signup"
-          ? { email: identifier, purpose: "signup" }
-          : { identifier, purpose: "login" }
-      );
-      setOtpPurpose(firstPurpose);
-      setStep("otp");
-      toast.success(response.message);
-    } catch (error) {
-      if (error.status === 404 && isEmail(identifier)) {
-        if (!isOtpSignupEnabled) {
-          showError("Account not found and signups are currently disabled.", "Account not found");
-          return;
-        }
-        try {
-          const response = await api.requestOtp({ email: identifier, purpose: "signup" });
-          setOtpPurpose("signup");
-          setStep("otp");
-          toast.success(response.message);
-        } catch (signupError) {
-          showError(signupError.message || "Could not send OTP.", "OTP not sent");
-        }
-      } else {
-        showError(error.message || "Could not send OTP.", "OTP not sent");
+      let error;
+      if (isEmail(identifier)) {
+        const { error: err } = await supabase.auth.signInWithOtp({
+          email: identifier,
+          options: {
+            shouldCreateUser: true
+          }
+        });
+        error = err;
+      } else if (isPhoneLike(identifier)) {
+        const { error: err } = await supabase.auth.signInWithOtp({
+          phone: identifier.startsWith("+") ? identifier : `+91${identifier}`
+        });
+        error = err;
       }
+
+      if (error) throw error;
+      setStep("otp");
+      toast.success("OTP sent successfully.");
+    } catch (error) {
+      showError(error.message || "Could not send OTP.", "OTP not sent");
     } finally {
       setLoading(false);
     }
@@ -240,44 +133,27 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
     const identifier = form.identifier.trim();
     const otp = form.otp.trim();
 
-    if (!otp) {
-      showError("Enter the OTP sent to your email or phone.", "OTP required");
+    if (!otp || otp.length < 6) {
+      showError("Enter the 6-digit OTP sent to you.", "OTP required");
       return;
     }
 
     setLoading(true);
     clearError();
 
-    if (isPhoneLike(identifier)) {
-      try {
-        if (!confirmationResult) {
-          showError("Session expired. Please request OTP again.", "Session Expired");
-          setStep("identity");
-          setLoading(false);
-          return;
-        }
-        const result = await confirmationResult.confirm(otp);
-        const idToken = await result.user.getIdToken(true);
-        const response = await api.firebasePhoneLogin({ idToken, mode: "login" });
-        api.saveSession(response);
-        toast.success("Phone login complete.");
-        accountDestination(response.user);
-      } catch (error) {
-        showError(error.message || "OTP not verified. Please try again.", "OTP not verified");
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
     try {
-      const payload = otpPurpose === "signup"
-        ? { email: identifier, otp, purpose: "signup" }
-        : { identifier, otp, purpose: "login" };
-      const response = await api.verifyOtp(payload);
-      api.saveSession(response);
-      toast.success(otpPurpose === "signup" ? "Account created and logged in." : "Login complete.");
-      accountDestination(response.user);
+      const type = isEmail(identifier) ? 'email' : 'phone';
+      const formattedPhone = type === 'phone' && !identifier.startsWith("+") ? `+91${identifier}` : identifier;
+      
+      const { data, error } = await supabase.auth.verifyOtp({
+        [type]: type === 'phone' ? formattedPhone : identifier,
+        token: otp,
+        type: type === 'email' ? 'email' : 'sms'
+      });
+
+      if (error) throw error;
+      toast.success("Login complete.");
+      accountDestination();
     } catch (error) {
       showError(error.message || "OTP not verified. Please try again.", "OTP not verified");
     } finally {
@@ -286,35 +162,21 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
   };
 
   const handleGoogleSuccess = async () => {
-
-
     setLoading(true);
     clearError();
-
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
-      const userCredential = await signInWithPopup(auth, provider);
-      const firebaseUser = userCredential.user;
-      const isSignupEnabled = isAuthActionEnabled(googleMethod, "signup");
-      const response = await api.googleLogin({
-        idToken: await firebaseUser.getIdToken(true),
-        mode: isSignupEnabled ? "signup" : "login"
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+          queryParams: {
+            prompt: 'select_account'
+          }
+        }
       });
-      api.saveSession(response);
-      toast.success(response.user ? "Gmail login complete." : "Logged in with Gmail.");
-      accountDestination(response.user);
+      if (error) throw error;
     } catch (error) {
-      console.error("Google Login Catch Error details:", error);
-      if (auth.currentUser && !api.hasToken()) await signOut(auth);
-      if (error.code === "auth/unauthorized-domain") {
-        showError(`Authorize ${window.location.hostname} in Firebase Authentication settings.`, "Firebase setup needed");
-      } else if (error.code === "auth/popup-closed-by-user") {
-        showError("Gmail login was cancelled.", "Gmail login cancelled");
-      } else {
-        showError(error.message || "Could not continue with Gmail.", "Gmail login issue");
-      }
-    } finally {
+      showError(error.message || "Could not continue with Google.", "Google login issue");
       setLoading(false);
     }
   };
@@ -322,7 +184,6 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
   const resetFlow = () => {
     setStep("choice");
     setForm((current) => ({ ...current, otp: "" }));
-    setOtpPurpose("login");
     clearError();
   };
 
@@ -341,10 +202,10 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
         <div className="brave-icon-circle">
           <ShieldCheck size={32} />
         </div>
-        <h1>{currentUser.displayName || currentUser.email || "Welcome!"}</h1>
+        <h1>{currentUser.email || currentUser.phone || "Welcome!"}</h1>
         <p>Your account is active and ready for your next booking.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
-          <button className="brave-theme-btn" onClick={() => accountDestination(currentUser)}>Continue</button>
+          <button className="brave-theme-btn" onClick={() => accountDestination()}>Continue</button>
           {!compact && <button className="brave-theme-btn-ghost" style={{ marginTop: '0' }} onClick={onLogout}>Logout</button>}
         </div>
       </div>
@@ -384,12 +245,12 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
             <div className="brave-icon-circle">
               <ShieldCheck size={32} />
             </div>
-            <h1>{step === "otp" ? "Verify OTP" : (hasSignupEnabled ? "Ready to start?" : "Login")}</h1>
+            <h1>{step === "otp" ? "Verify OTP" : "Login or Signup"}</h1>
             <p>
                 {step === "otp"
                   ? `Enter the OTP sent for ${form.identifier.trim()}.`
                   : step === "identity"
-                    ? (isOtpSignupEnabled ? "Enter your phone number or email to receive an OTP. New users will be signed up automatically." : "Enter your phone number or email to receive an OTP to login.")
+                    ? "Enter your phone number or email to receive an OTP. New users will be signed up automatically."
                     : "Connect your account or continue below"}
             </p>
 
@@ -407,6 +268,21 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
                   <div className="brave-choice-content">
                     <strong>Continue with Google</strong>
                     <small>Login or sign up instantly</small>
+                  </div>
+                </button>
+                <button
+                  className="brave-choice-btn"
+                  style={{ marginTop: '8px' }}
+                  type="button"
+                  onClick={() => setStep("identity")}
+                  disabled={loading}
+                >
+                  <div className="brave-choice-icon">
+                    <Mail size={18} />
+                  </div>
+                  <div className="brave-choice-content">
+                    <strong>Continue with Email / Phone</strong>
+                    <small>Get a magic OTP code</small>
                   </div>
                 </button>
                 {compact && (
@@ -441,7 +317,7 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
             ) : (
               <form onSubmit={verifyOtp} style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
                 <div className="otp-card-container">
-                  <div className="otp-card-title">Verify your number</div>
+                  <div className="otp-card-title">Verify your contact</div>
                   <div className="otp-card-subtitle">
                     Enter the 6-digit code we sent to<br/>
                     <strong style={{ color: '#fff' }}>{form.identifier}</strong>
@@ -496,7 +372,6 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
   if (compact) {
     return (
       <>
-        <div id="recaptcha-container"></div>
         <div className="auth-popup-backdrop login-welcome-backdrop" role="dialog" aria-modal="true" aria-label="Login">
           <section className="login-welcome-popup">{authCard}</section>
         </div>
@@ -521,7 +396,6 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
 
   return (
     <section className="auth-page shell">
-      <div id="recaptcha-container"></div>
       <div className="auth-stage">
         <AuthVisual />
         {authCard}
