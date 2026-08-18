@@ -12,7 +12,7 @@ import {
   Wrench,
   X
 } from "lucide-react";
-import { ADMIN_PANEL_URL } from "../config/urls.js";
+
 
 const baseLinks = [
   { to: "/", label: "Home", icon: Home },
@@ -85,11 +85,7 @@ function Navbar({ user, onLogout }) {
                     <Link to="/profile?tab=history" onClick={closeMenus} role="menuitem">
                       <History size={16} /> History
                     </Link>
-                    {(user.role === "admin" || user.role === "owner") && (
-                      <a href={ADMIN_PANEL_URL} onClick={closeMenus} role="menuitem">
-                        <ShieldCheck size={16} /> Backend
-                      </a>
-                    )}
+
                     <button type="button" onClick={logout} role="menuitem">
                       <LogOut size={16} /> Logout
                     </button>

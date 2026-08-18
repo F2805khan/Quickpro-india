@@ -1,6 +1,47 @@
-import { Op } from "sequelize";
+import { createClient } from "@supabase/supabase-js";
+import { Op } from "../utils/sequelizeMock.js";
 import User from "../models/User.js";
 import asyncHandler from "../middleware/asyncHandler.js";
+
+let adminLoginClient;
+
+const adminLoginError = () => {
+  const error = new Error("Invalid admin credentials");
+  error.statusCode = 401;
+  return error;
+};
+
+const getAdminLoginClient = () => {
+  if (adminLoginClient) return adminLoginClient;
+
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey =
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    const error = new Error("Admin login is not configured");
+    error.statusCode = 500;
+    throw error;
+  }
+
+  adminLoginClient = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: false
+    }
+  });
+
+  return adminLoginClient;
+};
+
+const normalizeIdentifier = (value) => String(value || "").trim();
+const normalizeLower = (value) => normalizeIdentifier(value).toLowerCase();
+const isPrivilegedRole = (role) => role === "owner" || role === "admin";
+const generatedAdminEmail = (user) =>
+  user?.userId ? `${String(user.userId).trim().toLowerCase()}@quickpro.local` : "";
 
 const publicUser = (user) => ({
   _id: user._id,
@@ -17,6 +58,67 @@ const publicUser = (user) => ({
   authProvider: user.authProvider,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt
+});
+
+export const adminLogin = asyncHandler(async (req, res) => {
+  const identifier = normalizeIdentifier(req.body?.identifier);
+  const password = String(req.body?.password || "");
+
+  if (!identifier || !password) {
+    throw adminLoginError();
+  }
+
+  const normalized = normalizeLower(identifier);
+  const identity = [
+    { email: normalized },
+    { userId: normalized },
+    { phone: identifier }
+  ];
+
+  const user = await User.findOne({
+    where: { [Op.or]: identity }
+  });
+
+  if (!user || !isPrivilegedRole(user.role)) {
+    throw adminLoginError();
+  }
+
+  const authEmail = normalizeLower(user.email) || generatedAdminEmail(user);
+  const authPhone = normalizeIdentifier(user.phone);
+  const signInCredentials = authEmail
+    ? { email: authEmail, password }
+    : authPhone
+      ? { phone: authPhone, password }
+      : null;
+
+  if (!signInCredentials) {
+    const error = new Error("Admin auth identity is not configured");
+    error.statusCode = 500;
+    throw error;
+  }
+
+  const { data, error } = await getAdminLoginClient().auth.signInWithPassword(signInCredentials);
+
+  if (error || !data?.session || !data?.user) {
+    throw adminLoginError();
+  }
+
+  if (user._id && data.user.id !== user._id) {
+    const error = new Error("Admin auth user is not synced with the backend profile");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  res.json({
+    user: publicUser(user),
+    session: {
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+      expires_at: data.session.expires_at,
+      expires_in: data.session.expires_in,
+      token_type: data.session.token_type
+    }
+  });
 });
 
 export const getProfile = asyncHandler(async (req, res) => {

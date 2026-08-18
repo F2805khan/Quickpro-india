@@ -17,7 +17,7 @@ import { getUserProfile, onProfileChanged } from "./data/profileStore.js";
 import { saveUserBooking } from "./data/bookingStore.js";
 import { getBestCustomerReviews, getCustomerReviews, saveCustomerReview } from "./data/reviewStore.js";
 import { displayUserName, getCurrentSessionUser, isPrivilegedUser, onProfileUpdated, onSessionChanged } from "./data/sessionStore.js";
-import { ADMIN_PANEL_URL } from "./config/urls.js";
+
 
 const LoginSignup = lazy(() => import("./pages/LoginSignup.jsx"));
 const Profile = lazy(() => import("./pages/Profile.jsx"));
@@ -1344,9 +1344,7 @@ function App() {
             <Route path="/invoice/:id" element={<DigitalInvoice />} />
             <Route path="/memberships" element={<Memberships />} />
             {import.meta.env.DEV && <Route path="/profile-skeleton-preview" element={<ProfileSkeletonCapture />} />}
-            <Route path="/owner" element={<ExternalRedirect to={ADMIN_PANEL_URL} />} />
-            <Route path="/backend" element={<ExternalRedirect to={ADMIN_PANEL_URL} />} />
-            <Route path="/admin" element={<ExternalRedirect to={ADMIN_PANEL_URL} />} />
+
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/support" element={<Navigate to="/contact" replace />} />
             <Route path="/history" element={<Navigate to="/profile?tab=history" replace />} />

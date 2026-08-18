@@ -14,6 +14,16 @@ const adminBeautyArtistPath = (id) => `/admin/beauty-artists/${encodeURIComponen
 const adminSupportPath = (id) => `/admin/support/${encodeURIComponent(id)}/reply`;
 const adminUserPasswordPath = (id) => `/admin/users/${encodeURIComponent(id)}/password`;
 const AUTH_METHODS_CACHE_MS = 60 * 1000;
+const TOKEN_KEY = "funservice-token";
+const LEGACY_TOKEN_KEY = "token";
+
+const cacheAuthMethods = (data) => {
+  if (data?.methods) {
+    localStorage.setItem("funservice-auth-methods", JSON.stringify(data.methods));
+    localStorage.setItem("funservice-auth-methods-time", Date.now().toString());
+  }
+  return data;
+};
 
 async function request(path, options = {}) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -52,11 +62,34 @@ const notifyBeautyChanged = () => {
 };
 
 export const api = {
+  login: async ({ identifier, password }) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: identifier,
+      password: password
+    });
+    if (error) throw error;
+    return {
+      user: {
+        ...data.user,
+        ...(data.user?.user_metadata || {})
+      }
+    };
+  },
+  clearSession: async () => {
+    await supabase.auth.signOut();
+  },
   hasToken: async () => {
     const { data: { session } } = await supabase.auth.getSession();
     return !!session;
   },
   getSavedUser: getCurrentSessionUser,
+  saveSession: (session) => {
+    // Session is handled by Supabase, this is just for compatibility
+  },
+  getToken: () => {
+    // Token is handled by Supabase session implicitly
+    return null;
+  },
   isAdmin: () => getCurrentSessionUser()?.role === "admin" || getCurrentSessionUser()?.role === "owner",
   isOwner: () => getCurrentSessionUser()?.role === "owner",
   health: () =>

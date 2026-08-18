@@ -1,5 +1,6 @@
 import { Op } from "./sequelizeMock.js";
 import User from "../models/User.js";
+import { supabase } from "../config/supabase.js";
 
 const normalize = (value) => (value?.trim() ? value.trim() : undefined);
 const normalizeLower = (value) => normalize(value)?.toLowerCase();
@@ -34,8 +35,29 @@ const ensureAdminUser = async () => {
         (await User.findOne({ where: { role: "admin" } }));
     }
 
+    const adminEmailToSync = adminEmail || (adminUserId ? `${adminUserId}@quickpro.local` : null);
+
     if (!admin) {
+      // Local admin does not exist. Check if Supabase user exists
+      let supabaseUserId = null;
+      if (adminEmailToSync) {
+        const { data: usersData } = await supabase.auth.admin.listUsers();
+        let existing = (usersData?.users || []).find(u => u.email === adminEmailToSync);
+        if (!existing) {
+          const { data: created } = await supabase.auth.admin.createUser({
+            email: adminEmailToSync,
+            password: adminPassword,
+            email_confirm: true,
+            user_metadata: { role: "owner" }
+          });
+          if (created?.user) supabaseUserId = created.user.id;
+        } else {
+          supabaseUserId = existing.id;
+        }
+      }
+
       admin = await User.create({
+        _id: supabaseUserId, // uses Supabase ID if available
         name: normalize(process.env.ADMIN_NAME) || "Quickpro India Control",
         userId: adminUserId,
         email: adminEmail,
@@ -45,6 +67,35 @@ const ensureAdminUser = async () => {
         authProvider: "password"
       });
     } else {
+      // Local admin exists. Ensure Supabase matches the local ID
+      const localId = admin._id;
+      if (adminEmailToSync) {
+        const { data: usersData } = await supabase.auth.admin.listUsers();
+        const existing = (usersData?.users || []).find(u => u.email === adminEmailToSync);
+        
+        if (existing && existing.id !== localId) {
+          // Delete the wrong-ID user from Auth to free up the email
+          await supabase.auth.admin.deleteUser(existing.id);
+        }
+
+        if (!existing || existing.id !== localId) {
+          // Recreate in Auth with the correct local DB ID
+          await supabase.auth.admin.createUser({
+            id: localId,
+            email: adminEmailToSync,
+            password: adminPassword,
+            email_confirm: true,
+            user_metadata: { role: "owner" }
+          });
+        } else {
+          // Exists with correct ID, just update password/role
+          await supabase.auth.admin.updateUserById(localId, {
+            password: adminPassword,
+            user_metadata: { ...existing.user_metadata, role: "owner" }
+          });
+        }
+      }
+
       admin.role = "owner";
       admin.authProvider = "password";
       const preferredName = normalize(process.env.ADMIN_NAME) || "Quickpro India Control";
@@ -60,15 +111,8 @@ const ensureAdminUser = async () => {
 
     console.log(`Owner ready: ${admin.userId || admin.email || admin.phone}`);
   } catch (error) {
-    /* If specific columns are missing from the DB, don't crash the server.
-       The SQL migration needs to run first to add the missing columns. */
-    console.error(
-      "Admin bootstrap failed (missing DB columns? Run the migration first):",
-      error.message
-    );
-    console.warn(
-      "The server will start but admin login may not work until the schema migration is applied."
-    );
+    console.error("Admin bootstrap failed:", error?.message || error);
+    console.warn("The server will start but admin login may not work until the schema migration is applied.");
   }
 };
 
