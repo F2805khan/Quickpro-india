@@ -1,7 +1,15 @@
 import { supabase } from "../supabase.js";
 import { getCurrentSessionUser } from "../data/sessionStore.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "/api";
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (typeof window !== "undefined" && window.location.hostname.includes("vercel.app")) {
+    return "https://quickpro-india.onrender.com/api";
+  }
+  return "/api";
+};
+
+const API_URL = getApiUrl();
 const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
 
 const bookingPath = (id) => `/bookings/${encodeURIComponent(id)}`;
@@ -39,10 +47,21 @@ async function request(path, options = {}) {
     }
   });
 
-  const data = await response.json().catch(() => ({}));
+  const contentType = response.headers.get("content-type") || "";
+  let data;
+  if (contentType.includes("application/json")) {
+    data = await response.json().catch(() => ({}));
+  } else {
+    if (!response.ok) {
+      const error = new Error(`Server returned ${response.status}: ${response.statusText}`);
+      error.status = response.status;
+      throw error;
+    }
+    throw new Error("Invalid API response format (received non-JSON response)");
+  }
 
   if (!response.ok) {
-    const error = new Error(data.message || "Something went wrong");
+    const error = new Error(data?.message || "Something went wrong");
     error.status = response.status;
     error.data = data;
     throw error;

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { api } from "../api/client.js";
 import { toast } from "../utils/notifications.js";
-import { clearStoredCouponCode, readStoredCouponCode, writeStoredCouponCode } from "../utils/couponStorage.js";
 
 const formatCouponError = (message = "") => {
   const raw = String(message || "").toLowerCase();
@@ -70,7 +69,8 @@ export default function CouponApplyBox({
         const result = await api.applyCoupon({ code, orderAmount });
         if (active) {
           onApplied?.(result);
-          writeStoredCouponCode(result.code);
+          if (result.code) localStorage.setItem("funservice-coupon-code", result.code);
+          else localStorage.removeItem("funservice-coupon-code");
           setError("");
         }
       } catch (applyError) {
@@ -109,7 +109,8 @@ export default function CouponApplyBox({
       const result = await api.applyCoupon({ code: trimmedCode, orderAmount });
       onApplied?.(result);
       setCouponCode(result.code);
-      writeStoredCouponCode(result.code);
+      if (result.code) localStorage.setItem("funservice-coupon-code", result.code);
+      else localStorage.removeItem("funservice-coupon-code");
       setError("");
       toast.success(`Coupon ${result.code} applied.`);
     } catch (applyError) {
@@ -128,7 +129,7 @@ export default function CouponApplyBox({
     }
     setCouponCode("");
     setError("");
-    clearStoredCouponCode();
+    localStorage.removeItem("funservice-coupon-code");
     toast.success(isApplied ? "Coupon removed." : "Coupon code cleared.");
   };
 

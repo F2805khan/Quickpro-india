@@ -107,7 +107,8 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
         const { error: err } = await supabase.auth.signInWithOtp({
           email: identifier,
           options: {
-            shouldCreateUser: true
+            shouldCreateUser: true,
+            emailRedirectTo: window.location.origin
           }
         });
         error = err;
@@ -270,21 +271,7 @@ function LoginSignup({ compact = false, onAuthenticated, onDismiss }) {
                     <small>Login or sign up instantly</small>
                   </div>
                 </button>
-                <button
-                  className="brave-choice-btn"
-                  style={{ marginTop: '8px' }}
-                  type="button"
-                  onClick={() => setStep("identity")}
-                  disabled={loading}
-                >
-                  <div className="brave-choice-icon">
-                    <Mail size={18} />
-                  </div>
-                  <div className="brave-choice-content">
-                    <strong>Continue with Email / Phone</strong>
-                    <small>Get a magic OTP code</small>
-                  </div>
-                </button>
+
                 {compact && (
                   <button className="brave-theme-btn-ghost" style={{ width: '100%', marginTop: '16px' }} type="button" onClick={onDismiss} disabled={loading}>
                     Browse without login

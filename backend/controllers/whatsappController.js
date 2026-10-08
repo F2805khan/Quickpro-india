@@ -2,7 +2,7 @@ import asyncHandler from "../middleware/asyncHandler.js";
 import Booking from "../models/Booking.js";
 import Service from "../models/Service.js";
 import User from "../models/User.js";
-import { Op } from "../utils/sequelizeMock.js";
+
 import {
   isWhatsAppCloudConfigured,
   normalizePhone,
@@ -41,7 +41,7 @@ const findBookingsByPhone = async (phone, limit = 3) => {
   if (!variants.length) return [];
 
   return Booking.findAll({
-    where: { [Op.or]: variants.map((value) => ({ phone: value })) },
+    where: { or: variants.map((value) => ({ phone: value })) },
     order: [["createdAt", "DESC"]],
     limit
   });
@@ -323,7 +323,7 @@ export const broadcastMessage = asyncHandler(async (req, res) => {
     targets = phones;
   } else {
     const users = await User.findAll({
-      where: { role: { [Op.notIn]: ["admin", "owner"] } },
+      where: { role: { notIn: ["admin", "owner"] } },
       attributes: ["_id", "phone"]
     });
     targets = users.map((user) => user.phone).filter(Boolean);

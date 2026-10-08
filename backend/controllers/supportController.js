@@ -1,5 +1,5 @@
 import { randomBytes } from "crypto";
-import { Op } from "../utils/sequelizeMock.js";
+
 import asyncHandler from "../middleware/asyncHandler.js";
 import { isPrivileged } from "../middleware/authMiddleware.js";
 import SupportMessage from "../models/SupportMessage.js";
@@ -77,7 +77,7 @@ export const getSupportMessagesByUser = asyncHandler(async (req, res) => {
   }
 
   const messages = await SupportMessage.findAll({
-    where: { [Op.or]: filters },
+    where: { or: filters },
     order: [["createdAt", "DESC"]]
   });
 

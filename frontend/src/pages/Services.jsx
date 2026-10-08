@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import ServiceCard from "../components/ServiceCard.jsx";
 import { categories, services as defaultServices } from "../data/services.js";
-import { matchServiceQuery } from "../utils/serviceSearch.js";
 
 const categoryIcons = {
   "All Services": Sparkles,
@@ -60,7 +59,9 @@ function Services({ services = defaultServices, searchableServices = services, o
         activeCategory === "All Services" || service.category === activeCategory;
       const subcategoryMatch = 
         activeSubcategory === "All" || service.subcategory === activeSubcategory;
-      return categoryMatch && subcategoryMatch && matchServiceQuery(service, search);
+      const searchMatch = !search.trim() || [service.title, service.description, service.category, service.salonName]
+        .filter(Boolean).join(" ").toLowerCase().includes(search.trim().toLowerCase());
+      return categoryMatch && subcategoryMatch && searchMatch;
     });
   }, [activeCategory, activeSubcategory, search, servicePool]);
 

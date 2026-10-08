@@ -788,17 +788,24 @@ function BookingPage({ cartItems = [], onUpdateCartQuantity, catalogServices = f
   }, []);
 
   useEffect(() => {
+    const fallback = [
+      { method: "UPI", type: "online", description: "Pay securely with any UPI app.", enabled: true },
+      { method: "Debit/Credit Card", type: "online", description: "Pay with a debit or credit card.", enabled: true },
+      { method: "Cash on Service", type: "cash", description: "Pay the professional after the service.", enabled: true }
+    ];
+
     const loadPaymentMethods = async () => {
       try {
         const methods = await api.getPaymentMethods();
-        setPaymentMethods(methods);
-        setPaymentMethod((current) => current || methods.find(m => m.enabled !== false)?.method || methods[0]?.method || "");
-      } catch {
-        const fallback = [
-          { method: "UPI", type: "online", description: "Pay securely with any UPI app.", enabled: true },
-          { method: "Debit/Credit Card", type: "online", description: "Pay with a debit or credit card.", enabled: true },
-          { method: "Cash on Service", type: "cash", description: "Pay the professional after the service.", enabled: true }
-        ];
+        if (Array.isArray(methods) && methods.length > 0) {
+          setPaymentMethods(methods);
+          setPaymentMethod((current) => current || methods.find(m => m.enabled !== false)?.method || methods[0]?.method || "");
+        } else {
+          setPaymentMethods(fallback);
+          setPaymentMethod((current) => current || fallback[0].method);
+        }
+      } catch (err) {
+        console.warn("Could not load payment methods, using fallback:", err);
         setPaymentMethods(fallback);
         setPaymentMethod((current) => current || fallback[0].method);
       }

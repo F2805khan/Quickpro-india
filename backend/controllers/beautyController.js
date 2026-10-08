@@ -1,4 +1,4 @@
-import { Op } from "../utils/sequelizeMock.js";
+
 import asyncHandler from "../middleware/asyncHandler.js";
 import BeautyArtist from "../models/BeautyArtist.js";
 
@@ -116,15 +116,15 @@ export const getBeautyArtists = asyncHandler(async (req, res) => {
   const where = {};
 
   if (search) {
-    where[Op.or] = [
-      { name: { [Op.like]: `%${search}%` } },
-      { specialty: { [Op.like]: `%${search}%` } },
-      { salonName: { [Op.like]: `%${search}%` } }
+    where.or = [
+      { name: { like: `%${search}%` } },
+      { specialty: { like: `%${search}%` } },
+      { salonName: { like: `%${search}%` } }
     ];
   }
 
   if (region && region !== "All Regions") {
-    where.region = { [Op.in]: ["All Regions", region] };
+    where.region = { in: ["All Regions", region] };
   }
 
   if (includeDisabled !== "true") {

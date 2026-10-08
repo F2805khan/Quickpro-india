@@ -1152,21 +1152,49 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
     const ids = new Set();
     bookingsList.forEach((b) => {
       if (new Date(b.createdAt) >= sevenDaysAgo) {
-        if (b.customerId) ids.add(b.customerId);
-        if (b.customer?._id) ids.add(b.customer._id);
-        if (b.customer?.userId) ids.add(b.customer.userId);
+        if (b.customerId) ids.add(String(b.customerId));
+        if (b.customer?._id) ids.add(String(b.customer._id));
+        if (b.customer?.userId) ids.add(String(b.customer.userId));
+        if (b.userId) ids.add(String(b.userId));
+        if (b.user_id) ids.add(String(b.user_id));
+      }
+    });
+    usersList.forEach((u) => {
+      const updated = u.updatedAt ? new Date(u.updatedAt) : null;
+      const created = u.createdAt ? new Date(u.createdAt) : null;
+      if ((updated && updated >= sevenDaysAgo) || (created && created >= sevenDaysAgo)) {
+        if (u._id) ids.add(String(u._id));
+        if (u.userId) ids.add(String(u.userId));
+        if (u.id) ids.add(String(u.id));
       }
     });
     return ids;
+  }, [bookingsList, usersList]);
+
+  // Map user ID to latest booking or activity date for active time display
+  const userLastActiveMap = useMemo(() => {
+    const map = new Map();
+    bookingsList.forEach((b) => {
+      const uId = b.userId || b.user_id || b.customerId || b.customer?._id;
+      if (uId) {
+        const bDate = new Date(b.createdAt);
+        const existing = map.get(String(uId));
+        if (!existing || bDate > existing) {
+          map.set(String(uId), bDate);
+        }
+      }
+    });
+    return map;
   }, [bookingsList]);
 
   // Filters for User list
   const filteredUsers = useMemo(() => {
     return usersList.filter((u) => {
       if (showActiveUsersOnly) {
-        const id1 = u._id;
-        const id2 = u.userId;
-        if (!activeUserIds.has(id1) && !activeUserIds.has(id2)) {
+        const id1 = String(u._id || "");
+        const id2 = String(u.userId || "");
+        const id3 = String(u.id || "");
+        if (!activeUserIds.has(id1) && !activeUserIds.has(id2) && !activeUserIds.has(id3)) {
           return false;
         }
       }
@@ -2042,6 +2070,7 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
               <th>Role</th>
               <th>Region / Address</th>
               <th>Joined On</th>
+              <th>Active Time / Status</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -2069,6 +2098,30 @@ function AdminDashboard({ currentUser, services, onServiceAdded, onServiceUpdate
                       <small className="block max-w-xs truncate text-xs text-muted" title={u.address}>{u.address || "No address saved"}</small>
                     </td>
                     <td>{formatDate(u.createdAt)}</td>
+                    <td>
+                      {(() => {
+                        const lastBookingDate = userLastActiveMap.get(String(u._id || u.userId || u.id));
+                        const lastActive = lastBookingDate || (u.updatedAt ? new Date(u.updatedAt) : (u.createdAt ? new Date(u.createdAt) : null));
+                        if (!lastActive) return <span className="text-muted text-xs">No activity</span>;
+                        const diffHours = (Date.now() - new Date(lastActive).getTime()) / (1000 * 60 * 60);
+                        const isRecentlyActive = diffHours < 24;
+                        const isWithinWeek = diffHours < 24 * 7;
+                        return (
+                          <div>
+                            <span 
+                              className={`status-pill ${isRecentlyActive ? "status-confirmed" : isWithinWeek ? "status-assigned" : "status-pending"}`}
+                              style={{ fontSize: "11px", padding: "2px 8px", display: "inline-block" }}
+                            >
+                              {isRecentlyActive ? "Active Today" : isWithinWeek ? "Active This Week" : "Inactive"}
+                            </span>
+                            <small className="block text-muted text-xs" style={{ marginTop: "3px" }}>
+                              {lastBookingDate ? "Booked: " : "Seen: "}
+                              {formatDate(lastActive)}
+                            </small>
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td>
                       <button
                         className="btn btn-ghost btn-small text-danger"

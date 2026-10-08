@@ -52,13 +52,14 @@ function BookingModal({
     }
   }, [service, isOpen]);
 
+  const safeServices = Array.isArray(services) ? services : defaultServices;
   const selectedService = useMemo(
     () =>
-      services.find((item) => (item.id || item._id) === form.serviceId) ||
+      safeServices.find((item) => (item.id || item._id) === form.serviceId) ||
       service ||
-      services[0] ||
+      safeServices[0] ||
       defaultServices[0],
-    [form.serviceId, service, services]
+    [form.serviceId, service, safeServices]
   );
 
   if (!isOpen) return null;

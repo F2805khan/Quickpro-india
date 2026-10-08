@@ -1,4 +1,4 @@
-import { Op } from "./sequelizeMock.js";
+
 import User from "../models/User.js";
 import { supabase } from "../config/supabase.js";
 
@@ -26,7 +26,7 @@ const ensureAdminUser = async () => {
     ].filter(Boolean);
 
     let admin = await User.findOne({
-      where: { [Op.or]: identity }
+      where: { or: identity }
     });
 
     if (!admin) {

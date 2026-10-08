@@ -1,4 +1,4 @@
-import { Op } from "../utils/sequelizeMock.js";
+
 import asyncHandler from "../middleware/asyncHandler.js";
 import Booking from "../models/Booking.js";
 import Payment from "../models/Payment.js";
@@ -70,7 +70,7 @@ export const getOverview = asyncHandler(async (req, res) => {
     }),
     User.findAll({
       attributes: { exclude: ["password", "otpCode", "otpExpires"] },
-      where: { role: { [Op.notIn]: ["admin", "owner"] } },
+      where: { role: { notIn: ["admin", "owner"] } },
       order: [["createdAt", "DESC"]]
     }),
     Service.count(),
@@ -120,10 +120,12 @@ export const getOverview = asyncHandler(async (req, res) => {
       if (day) {
         day.orders += 1;
         day.revenue += amount;
-        dailyUsers.get(key)?.add(String(plain.userId));
+        if (plain.userId) {
+          dailyUsers.get(key)?.add(String(plain.userId));
+        }
       }
 
-      if (status !== "Cancelled") {
+      if (status !== "Cancelled" && plain.userId) {
         activeUserIds.add(String(plain.userId));
       }
     }

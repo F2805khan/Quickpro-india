@@ -1,4 +1,4 @@
-import { Op } from "./sequelizeMock.js";
+
 
 export default function buildIdentityWhere({ email, phone, userId, identifier }) {
   const parts = [];
@@ -16,5 +16,5 @@ export default function buildIdentityWhere({ email, phone, userId, identifier })
     const norm = id.toLowerCase();
     parts.push({ email: norm }, { phone: id }, { userId: norm });
   }
-  return parts.length ? { [Op.or]: parts } : null;
+  return parts.length ? { or: parts } : null;
 }

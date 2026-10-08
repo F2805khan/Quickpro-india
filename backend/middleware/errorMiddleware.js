@@ -1,4 +1,4 @@
-import { safeErrorMessage } from "../utils/safeErrorMessage.js";
+
 
 export const notFound = (req, res, next) => {
   const error = new Error(`Not found - ${req.originalUrl}`);
@@ -10,7 +10,7 @@ export const errorHandler = (err, req, res, next) => {
   console.error("REAL ERROR:", err);
   const statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
   res.status(statusCode).json({
-    message: safeErrorMessage(err),
+    message: err?.message || "Something went wrong. Please try again.",
     stack: process.env.NODE_ENV === "production" ? undefined : err.stack
   });
 };

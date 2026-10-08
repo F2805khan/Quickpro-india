@@ -2,27 +2,36 @@ import { useState } from "react";
 import { NavLink, Link } from "react-router-dom";
 import {
   Bell,
-  Headphones,
+  Headset,
   History,
   Home,
   LogOut,
   Menu,
   ShieldCheck,
   UserRound,
-  Wrench,
-  X
+  Settings,
+  X,
+  ShoppingBag,
+  BrainCircuit
 } from "lucide-react";
 
 
 const baseLinks = [
   { to: "/", label: "Home", icon: Home },
-  { to: "/services", label: "Services", icon: Wrench },
-  { to: "/support", label: "Customer Support", icon: Headphones }
+  { to: "/services", label: "Services", icon: Settings },
+  { to: "/ai-vision", label: "AI Vision", icon: BrainCircuit },
+  { to: "/support", label: "Customer Support", icon: Headset }
 ];
 
 function Navbar({ user, onLogout }) {
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [animateCart, setAnimateCart] = useState(false);
+
+  const handleCartClick = () => {
+    setAnimateCart(true);
+    setTimeout(() => setAnimateCart(false), 300);
+  };
 
   const closeMenus = () => {
     setOpen(false);
@@ -53,7 +62,7 @@ function Navbar({ user, onLogout }) {
         <div className={`nav-links ${open ? "is-open" : ""}`}>
           {baseLinks.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} onClick={closeMenus}>
-              <Icon size={16} />
+              <Icon size={22} strokeWidth={2} />
               {label}
             </NavLink>
           ))}
@@ -63,6 +72,16 @@ function Navbar({ user, onLogout }) {
           <button className="icon-button" aria-label="Notifications" title="Notifications">
             <Bell size={20} />
             <span className="notification-dot" />
+          </button>
+
+          <button 
+            className={`icon-button cart-icon ${animateCart ? 'pop-animation' : ''}`} 
+            aria-label="Cart" 
+            title="Cart"
+            onClick={handleCartClick}
+          >
+            <ShoppingBag size={20} />
+            <span className="cart-badge">2</span>
           </button>
           
           {user ? (

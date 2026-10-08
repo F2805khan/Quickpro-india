@@ -1,4 +1,4 @@
-import { Op } from "../utils/sequelizeMock.js";
+
 import asyncHandler from "../middleware/asyncHandler.js";
 import Booking from "../models/Booking.js";
 import Payment from "../models/Payment.js";
@@ -16,7 +16,7 @@ const paymentLookupWhere = ({ bookingId, gatewayOrderId }) => {
   const parts = [];
   if (bookingId) parts.push({ bookingId });
   if (gatewayOrderId) parts.push({ gatewayOrderId });
-  return parts.length === 1 ? parts[0] : { [Op.or]: parts };
+  return parts.length === 1 ? parts[0] : { or: parts };
 };
 
 export const createOrder = asyncHandler(async (req, res) => {

@@ -271,9 +271,32 @@ body:has(.site-nav) { padding-top: 68px; }
 .brand-mark img { width: 100%; height: 100%; display: block; object-fit: cover; }
 .brand-dot { color: var(--accent-ink); }
 .nav-links { display: flex; justify-content: flex-start; gap: 28px; flex: 1; margin-left: 12px; }
-.nav-links a { position: relative; color: var(--secondary); font-size: 13px; font-weight: 700; transition: .2s ease; }
-.nav-links a:hover, .nav-links a.active { color: var(--text); }
-.nav-links a.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -25px; height: 1px; background: var(--accent); }
+.nav-links a { 
+  position: relative; 
+  color: var(--secondary); 
+  font-size: 13px; 
+  font-weight: 700; 
+  transition: all .2s ease; 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  gap: 6px; 
+}
+.nav-links a svg { transition: transform 0.2s ease; }
+.nav-links a:hover svg { transform: translateY(-2px); }
+.nav-links a:hover, .nav-links a.active { color: var(--accent); }
+.nav-links a.active svg { color: var(--accent); }
+.nav-links a::after { 
+  content: ""; 
+  position: absolute; 
+  bottom: -10px; 
+  width: 0; 
+  height: 3px; 
+  background: var(--accent); 
+  border-radius: 3px; 
+  transition: width 0.3s ease; 
+}
+.nav-links a.active::after, .nav-links a:hover::after { width: 22px; }
 .nav-links a.beauty-link:hover { color: var(--beauty); }
 .nav-links a.vision-link:hover, .nav-links a.vision-link.active { color: var(--accent-ink); }
 .vision-nav-line { position: absolute; inset: auto 0 -1px; height: 1px; background: var(--accent); opacity: .7; }
@@ -693,6 +716,9 @@ input:required:placeholder-shown:focus, textarea:required:placeholder-shown:focu
 .notification-trigger { position: relative; z-index: 90; }
 .notification-button { position: relative; }
 .notification-dot { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border: 2px solid #ffffff; border-radius: 50%; background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,.12); }
+.cart-badge { position: absolute; top: 0; right: 0; transform: translate(25%, -25%); display: flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; font-weight: bold; color: #ffffff; background-color: #059669; border-radius: 16px; border: 2px solid #ffffff; box-sizing: content-box; }
+.pop-animation { animation: cart-pop 0.3s ease-out; }
+@keyframes cart-pop { 0% { transform: scale(1); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
 .notification-popup { position: absolute; top: calc(100% + 10px); right: 0; width: min(380px,calc(100vw - 32px)); max-height: 380px; display: grid; grid-template-rows: auto minmax(0,1fr) auto; overflow: hidden; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,254,250,.98); box-shadow: 0 16px 36px rgba(52,67,20,.16); animation: notification-drop .22s ease both; }
 .notification-popup-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .notification-popup-head strong { font-size: 14px; letter-spacing: -.2px; }

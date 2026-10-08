@@ -3,7 +3,7 @@ import { isPrivileged } from "../middleware/authMiddleware.js";
 import Booking, { bookingStatuses } from "../models/Booking.js";
 import Payment from "../models/Payment.js";
 import Service from "../models/Service.js";
-import generateBookingId from "../utils/generateBookingId.js";
+import crypto from "crypto";
 import { notifyBookingCancelled, notifyBookingStatusUpdate, notifyWhatsAppAgent } from "../utils/whatsappAgent.js";
 import { assertPaymentMethodEnabled } from "../utils/paymentMethods.js";
 import { updateAcceptedBookingsCSV } from "../utils/excelExporter.js";
@@ -85,7 +85,7 @@ export const createBooking = asyncHandler(async (req, res) => {
   const booking = await Booking.create({
     userId: req.user._id,
     serviceId: service?._id ?? null,
-    bookingId: req.body.bookingId || generateBookingId(),
+    bookingId: req.body.bookingId || crypto.randomUUID(),
     serviceName,
     salonName: req.body.salonName || "",
     customerName,
@@ -106,13 +106,17 @@ export const createBooking = asyncHandler(async (req, res) => {
   });
 
   if (booking.paymentStatus === "Paid") {
-    await Payment.create({
-      bookingId: booking.bookingId,
-      amount: booking.amount,
-      method: booking.paymentMethod,
-      status: "Paid",
-      transactionId: `txn_${Date.now()}`
-    });
+    try {
+      await Payment.create({
+        bookingId: booking.bookingId,
+        amount: booking.amount,
+        method: booking.paymentMethod,
+        status: "Paid",
+        transactionId: `txn_${Date.now()}`
+      });
+    } catch (paymentError) {
+      console.warn("Payment record creation notice (booking created):", paymentError?.message || paymentError);
+    }
   }
 
   if (couponResult) {

@@ -43,7 +43,10 @@ export const saveUserBooking = async (user, values) => {
   if (!hasToken) throw new Error("Your session expired. Sign in before confirming your booking.");
 
   const response = await api.createBooking(values);
-  const booking = response.booking;
+  const booking = response?.booking || response;
+  if (!booking || !booking.bookingId) {
+    throw new Error(response?.message || "Booking creation failed on server. Please try again.");
+  }
   const bookings = [booking, ...getCachedUserBookings(user.uid).filter(({ bookingId }) => bookingId !== booking.bookingId)];
   saveLocalBookings(user.uid, bookings);
 

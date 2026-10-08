@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { Op } from "../utils/sequelizeMock.js";
+
 import User from "../models/User.js";
 import asyncHandler from "../middleware/asyncHandler.js";
 
@@ -76,7 +76,7 @@ export const adminLogin = asyncHandler(async (req, res) => {
   ];
 
   const user = await User.findOne({
-    where: { [Op.or]: identity }
+    where: { or: identity }
   });
 
   if (!user || !isPrivilegedRole(user.role)) {
@@ -147,7 +147,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
     const nextEmail = email.trim().toLowerCase();
     if (nextEmail !== user.email) {
       const taken = await User.findOne({
-        where: { email: nextEmail, _id: { [Op.ne]: user._id } }
+        where: { email: nextEmail, _id: { ne: user._id } }
       });
       if (taken) {
         res.status(409);
@@ -170,7 +170,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
     const nextPhone = phone.trim();
     if (nextPhone !== user.phone) {
       const taken = await User.findOne({
-        where: { phone: nextPhone, _id: { [Op.ne]: user._id } }
+        where: { phone: nextPhone, _id: { ne: user._id } }
       });
       if (taken) {
         res.status(409);

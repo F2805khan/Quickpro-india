@@ -1,4 +1,4 @@
-import { Op } from "../utils/sequelizeMock.js";
+
 import asyncHandler from "../middleware/asyncHandler.js";
 import { supabase } from "../config/supabase.js";
 import Service from "../models/Service.js";
@@ -74,7 +74,7 @@ export const getServices = asyncHandler(async (req, res) => {
   const where = {};
 
   if (search) {
-    where.title = { [Op.like]: `%${search}%` };
+    where.title = { like: `%${search}%` };
   }
 
   if (category && category !== "All Services" && category !== "More Services") {
@@ -90,7 +90,7 @@ export const getServices = asyncHandler(async (req, res) => {
   }
 
   if (region && region !== "All Regions") {
-    where.region = { [Op.in]: ["All Regions", region] };
+    where.region = { in: ["All Regions", region] };
   }
 
   const services = await Service.findAll({

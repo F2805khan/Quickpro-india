@@ -328,6 +328,11 @@ export class SupabaseModel {
 
   /* ---- Static query methods ---- */
 
+  static async find(query = {}) {
+    const options = query && typeof query === "object" && "where" in query ? query : { where: query };
+    return this.findAll(options);
+  }
+
   static async findOne(options = {}) {
     const rows = await this.findAll({ ...normalizeOptions(options), limit: 1 });
     return rows[0] || null;

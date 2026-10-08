@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { supabase } from "../config/supabase.js";
-import { normalizeDbError } from "../utils/safeErrorMessage.js";
+
 import { SupabaseModel } from "./SupabaseModel.js";
 
 const isNameColumnError = (message = "") => /full_name|schema cache|could not find/i.test(String(message || ""));
@@ -90,9 +90,7 @@ class User extends SupabaseModel {
       lastError = error;
     }
 
-    if (lastError) {
-      throw normalizeDbError(lastError, { action: "profile" });
-    }
+      throw lastError;
   }
 
   static async persistProfileUpdates(user, updates = {}) {
@@ -160,7 +158,7 @@ class User extends SupabaseModel {
       return await super.create(data);
     } catch (error) {
       const raw = error?.internalMessage || error?.message || "";
-      if (!isNameColumnError(raw) || data.name === undefined) throw normalizeDbError(error, { action: "profile" });
+      if (!isNameColumnError(raw) || data.name === undefined) throw error;
 
       const { data: created, error: insertError } = await supabase
         .from("users")
@@ -168,7 +166,7 @@ class User extends SupabaseModel {
         .select()
         .single();
 
-      if (insertError) throw normalizeDbError(insertError, { action: "profile" });
+      if (insertError) throw insertError;
       return new this({ ...data, _id: created.id, name: created.name ?? data.name });
     }
   }
@@ -183,7 +181,7 @@ class User extends SupabaseModel {
     } catch (error) {
       const raw = error?.internalMessage || error?.message || "";
       if (!this._id || this.name === undefined || !isNameColumnError(raw)) {
-        throw normalizeDbError(error, { action: "profile" });
+        throw error;
       }
 
       await User.syncNameColumns(this._id, this.name);
